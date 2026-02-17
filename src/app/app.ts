@@ -1,12 +1,18 @@
-import { Component, signal } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { TestService } from './core/test'
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet],
-  templateUrl: './app.html',
-  styleUrl: './app.scss'
+  standalone: true,
+  imports:[RouterOutlet],
+  templateUrl: './app.html'
 })
 export class App {
-  protected readonly title = signal('gobuddy-frontend');
+
+      constructor(private testService: TestService) {
+         this.testService.getData().subscribe(result => {
+           console.log(result);
+    });
+  }
 }
