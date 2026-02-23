@@ -1,0 +1,13 @@
+<div class="landing-container">
+  <h1 class="title">Welcome to GoBuddy <br> Let's share your Ride</h1>
+  <div class="actions">
+    <button (click)="openLogin()" class="btn login">Login</button>
+    <button class="btn" (click)="openSignup()">Signup</button>
+  </div>
+    @if (showLogin) {
+    <app-login (closeEvent)="closeLogin()"></app-login>
+    }
+    @if (showSignup) {
+    <app-signup (closeEvent)="closeSignup()"></app-signup>
+    }
+</div>
