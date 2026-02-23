@@ -1,0 +1,71 @@
+.splash {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(180deg, #7b2cbf 0%, #6a1b9a 50%, #5a189a 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 25px;
+  z-index: 9999;
+}
+
+.title {
+  color: white;
+  font-size: 50px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-align: center;
+  margin: 0;
+}
+
+.car {
+  width: 450px;
+  height: auto;
+  animation: floatCar 2.8s ease-in-out infinite;
+}
+
+@keyframes floatCar {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+.dots {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.dots span {
+  width: 14px;
+  height: 14px;
+  background: white;
+  opacity: 0.4;
+  border-radius: 50%;
+  animation: pulse 1s infinite alternate;
+}
+
+.dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes pulse {
+  from {
+    opacity: 0.3;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-4px);
+  }
+}

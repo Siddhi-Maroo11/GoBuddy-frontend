@@ -1,1 +1,6 @@
-<router-outlet></router-outlet>
+<app-splash-screen
+  *ngIf="loading"
+  (animationDone)="loading = false">
+</app-splash-screen>
+
+<router-outlet *ngIf="!loading"></router-outlet>

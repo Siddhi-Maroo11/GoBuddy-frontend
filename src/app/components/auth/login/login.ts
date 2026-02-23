@@ -1,18 +1,23 @@
-import { Component } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { inject } from '@angular/core';
+import { Component, EventEmitter, Output } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { ReactiveFormsModule, FormControl, FormGroup } from '@angular/forms';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [],
+  imports: [CommonModule, ReactiveFormsModule],
   templateUrl: './login.html',
   styleUrl: './login.scss',
 })
 export class Login {
-      constructor(){
-          console.log("Hello I am login page")
-      }
+  loginForm = new FormGroup({
+    email: new FormControl(''),
+    password: new FormControl(''),
+  });
+  @Output() closeEvent = new EventEmitter<void>();
+  onSubmit() {
+    if (this.loginForm.valid) {
+      console.log(this.loginForm.value);
+    }
+  }
 }
-
-

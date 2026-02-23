@@ -1,0 +1,126 @@
+<div class="overlay">
+  <div class="modal">
+    <button class="close-btn" (click)="closeEvent.emit()">×</button>
+    <h2 class="title">Welcome to GoBuddy</h2>
+    <p class="subtitle">Tell us about yourself</p>
+    <div class="modal-body">
+      <form [formGroup]="signupForm" (ngSubmit)="onSubmit()">
+        <div class="form-group">
+          <label>Full Name</label>
+          <input type="text" formControlName="fullName" />
+          <p
+            class="error"
+            *ngIf="signupForm.get('fullName')?.touched && signupForm.get('fullName')?.invalid"
+          >
+            Name must contain only letters and single spaces
+          </p>
+        </div>
+        <div class="form-group">
+          <label>Date of Birth</label>
+          <input type="date" formControlName="dob" />
+          <p class="error" *ngIf="signupForm.get('dob')?.errors?.['underAge']">
+            You must be at least 18 years old
+          </p>
+          <p
+            class="error"
+            *ngIf="signupForm.get('dob')?.touched && signupForm.get('dob')?.errors?.['invalidDob']"
+          >
+            Invalid Date
+          </p>
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" formControlName="email" />
+          <p
+            class="error"
+            *ngIf="signupForm.get('email')?.touched && signupForm.get('email')?.invalid"
+          >
+            Enter valid email format
+          </p>
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" formControlName="password" />
+          <p
+            class="error"
+            *ngIf="signupForm.get('password')?.touched && signupForm.get('password')?.invalid"
+          >
+            8+ chars, uppercase, lowercase, number & special char required
+          </p>
+        </div>
+        <div class="checkbox-group">
+          <label class="driver-checkbox">
+            <input type="checkbox" formControlName="isDriver" />
+            <span>Are you registering as a Driver?</span>
+          </label>
+        </div>
+        <div *ngIf="signupForm.get('isDriver')?.value">
+          <div class="form-group">
+            <label>Vehicle Model</label>
+            <input type="text" formControlName="vehicleModel" />
+          </div>
+          <div class="form-group">
+            <label>Vehicle Number</label>
+            <input type="text" formControlName="vehicleNumber" />
+            <p
+              class="error"
+              *ngIf="
+                signupForm.get('vehicleNumber')?.touched && signupForm.get('vehicleNumber')?.invalid
+              "
+            >
+              Format: RJ14AB1234
+            </p>
+          </div>
+          <div class="form-group">
+            <label>License Number</label>
+            <input type="text" formControlName="licenseNumber" />
+            <p
+              class="error"
+              *ngIf="
+                signupForm.get('licenseNumber')?.touched && signupForm.get('licenseNumber')?.invalid
+              "
+            >
+              Invalid license number
+            </p>
+          </div>
+          <div class="form-group">
+            <label>Upload License Image</label>
+            <input
+              type="file"
+              formControlName="licenseImage"
+              accept="image/*"
+              (change)="onFileSelect($event, 'licenseImage')"
+            />
+            <p
+              class="error"
+              *ngIf="
+                signupForm.get('licenseImage')?.touched && signupForm.get('licenseImage')?.invalid
+              "
+            >
+              License image is required
+            </p>
+          </div>
+          <div class="form-group">
+            <label>Upload Vehicle Images (2 required)</label>
+            <input
+              type="file"
+              multiple
+              accept="image/*"
+              formControlName="vehicleImages"
+              (change)="onFileSelect($event, 'vehicleImages')"
+            />
+            <p
+              class="error"
+              *ngIf="
+                signupForm.get('vehicleImages')?.touched && signupForm.get('vehicleImages')?.invalid
+              "
+            >
+              Please upload 2 vehicle images
+            </p>
+          </div>
+        </div>
+        <button class="btn-submit" type="submit" [disabled]="signupForm.invalid">Register</button>
+      </form>
+    </div>
+  </div>
+</div>
