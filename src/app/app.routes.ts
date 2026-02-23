@@ -20,7 +20,7 @@ export const routes: Routes = [
         canActivate: [authGuard, roleGuard],
         data: { role: 'Driver' }
     },
-    { path: '', redirectTo: 'login', pathMatch: 'full' },
+    { path: '', redirectTo: 'landing', pathMatch: 'full' },
     { path: '**', redirectTo: 'login'}
 
 ];
