@@ -10,6 +10,10 @@ import { ReactiveFormsModule, FormControl, FormGroup } from '@angular/forms';
   styleUrl: './login.scss',
 })
 export class Login {
+  showPassword: boolean = false;
+  togglePassword() {
+    this.showPassword = !this.showPassword;
+  }
   loginForm = new FormGroup({
     email: new FormControl(''),
     password: new FormControl(''),

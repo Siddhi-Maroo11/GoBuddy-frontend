@@ -1,4 +1,12 @@
-import { Component, EventEmitter, Output } from '@angular/core';
+import intlTelInput from 'intl-tel-input';
+import {
+  Component,
+  EventEmitter,
+  Output,
+  AfterViewInit,
+  ViewChild,
+  ElementRef,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   FormsModule,
@@ -9,7 +17,6 @@ import {
   AbstractControl,
   FormBuilder,
 } from '@angular/forms';
-
 @Component({
   selector: 'app-signup',
   standalone: true,
@@ -17,9 +24,29 @@ import {
   styleUrls: ['./sign-up.scss'],
   imports: [CommonModule, FormsModule, ReactiveFormsModule],
 })
-export class Signup {
+export class Signup implements AfterViewInit {
+  @ViewChild('phoneInput') phoneInput!: ElementRef;
+  phoneInstance: any;
   @Output() closeEvent = new EventEmitter<void>();
+  showPassword: boolean = false;
   signupForm: FormGroup;
+  togglePassword() {
+    this.showPassword = !this.showPassword;
+  }
+  ngAfterViewInit() {
+    this.phoneInstance = intlTelInput(this.phoneInput.nativeElement, {
+      initialCountry: 'in',
+      separateDialCode: true,
+      countryOrder: ['in', 'us'],
+      loadUtils: () => import('intl-tel-input/utils'),
+    });
+  }
+  onlyNumbers(event: KeyboardEvent) {
+    const charCode = event.which ? event.which : event.keyCode;
+    if (charCode > 31 && (charCode < 48 || charCode > 57)) {
+      event.preventDefault();
+    }
+  }
   constructor(private fb: FormBuilder) {
     this.signupForm = this.fb.group({
       fullName: ['', [Validators.required, Validators.pattern(/^[A-Za-z]+(?: [A-Za-z]+)*$/)]],
@@ -32,6 +59,7 @@ export class Signup {
           Validators.pattern(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[A-Za-z]{2,}$/),
         ],
       ],
+      mobile: ['', [Validators.required]],
       password: [
         '',
         [
@@ -41,10 +69,11 @@ export class Signup {
       ],
       isDriver: [false],
       vehicleModel: [''],
+      totalSeats: [''],
       vehicleNumber: [''],
       licenseNumber: [''],
-      licenseImage: ['', Validators.required],
-      vehicleImages: ['', Validators.required],
+      licenseImage: [''],
+      vehicleImages: [''],
     });
     this.signupForm.get('isDriver')?.valueChanges.subscribe((isDriver) => {
       if (isDriver) {
@@ -60,8 +89,20 @@ export class Signup {
       }
       this.signupForm.get('licenseImage')?.updateValueAndValidity();
       this.signupForm.get('vehicleImages')?.updateValueAndValidity();
+      this.signupForm.get('totalSeats')?.updateValueAndValidity();
+    });
+    this.signupForm.get('mobile')?.valueChanges.subscribe(() => {
+      if (this.phoneInstance) {
+        const isValid = this.phoneInstance.isValidNumber();
+        if (!isValid) {
+          this.signupForm.get('mobile')?.setErrors({ invalid: true });
+        } else {
+          this.signupForm.get('mobile')?.setErrors(null);
+        }
+      }
     });
   }
+
   minimumAgeValidator(minAge: number) {
     return (control: AbstractControl) => {
       const dob = new Date(control.value);
@@ -72,6 +113,7 @@ export class Signup {
       return is18 ? null : { underAge: true };
     };
   }
+
   trimFormValues() {
     Object.keys(this.signupForm.controls).forEach((key) => {
       let value = this.signupForm.get(key)?.value;
@@ -81,7 +123,27 @@ export class Signup {
       }
     });
   }
+
+  removeFile(controlName: string, inputElement: HTMLInputElement) {
+    this.signupForm.get(controlName)?.reset();
+    this.signupForm.get(controlName)?.markAsTouched();
+    inputElement.value = '';
+    if (controlName === 'licenseImage') {
+      if (this.signupForm.get('isDriver')?.value) {
+        this.signupForm.get(controlName)?.setErrors({ required: true });
+      }
+    }
+    if (controlName === 'vehicleImages') {
+      if (this.signupForm.get('isDriver')?.value) {
+        this.signupForm.get(controlName)?.setErrors({ required: true });
+      }
+    }
+  }
+
   enableDriverFields() {
+    this.signupForm
+      .get('totalSeats')
+      ?.setValidators([Validators.required, Validators.min(2), Validators.max(6)]);
     this.signupForm.get('vehicleModel')?.setValidators([Validators.required]);
     this.signupForm
       .get('vehicleNumber')
@@ -93,15 +155,22 @@ export class Signup {
       .get('licenseNumber')
       ?.setValidators([Validators.required, Validators.pattern(/^[A-Z0-9]{10,15}$/)]);
   }
+
   disableDriverFields() {
     this.signupForm.get('vehicleModel')?.clearValidators();
+    this.signupForm.get('totalSeats')?.clearValidators();
     this.signupForm.get('vehicleNumber')?.clearValidators();
     this.signupForm.get('licenseNumber')?.clearValidators();
     this.signupForm.get('vehicleModel')?.reset();
+    this.signupForm.get('totalSeats')?.reset();
     this.signupForm.get('vehicleNumber')?.reset();
     this.signupForm.get('licenseNumber')?.reset();
   }
+
   onSubmit() {
+    if (!this.phoneInstance.isValidNumber()) {
+      this.signupForm.get('mobile')?.setErrors({ invalid: true });
+    }
     this.trimFormValues();
     if (this.signupForm.invalid) {
       this.signupForm.markAllAsTouched();
@@ -109,6 +178,7 @@ export class Signup {
     }
     console.log('final form ka data:', this.signupForm.value);
   }
+  
   onFileSelect(event: any, controlName: string) {
     const files = event.target.files;
     if (controlName === 'licenseImage') {

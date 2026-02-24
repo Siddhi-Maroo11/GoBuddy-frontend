@@ -5,28 +5,25 @@ import { DriverDashboard } from './components/driver/driver-dashboard/driver-das
 import { authGuard } from './guards/auth-guard';
 import { roleGuard } from './guards/role-guard';
 import { loginGuard } from './guards/login-guard';
-
-export const routes: Routes = [
-    { path: 'login', component: Login , canActivate: [loginGuard] },
-    {
-        path: 'passenger',
-        component: PassengerDashboard,
-        canActivate: [authGuard, roleGuard],
-        data: { role: 'Passenger' }
-    },
-    {
-        path: 'driver',
-        component: DriverDashboard,
-        canActivate: [authGuard, roleGuard],
-        data: { role: 'Driver' }
-    },
-    { path: '', redirectTo: 'landing', pathMatch: 'full' },
-    { path: '**', redirectTo: 'login'}
-
 import { Landing } from './components/landing/landing';
+import { MapComponent } from './components/map/map';
 
 export const routes: Routes = [
+  { path: 'map', component: MapComponent },
   { path: '', component: Landing },
-  { path: '**', redirectTo: '' },
+  { path: 'login', component: Login, canActivate: [loginGuard] },
+  {
+    path: 'passenger',
+    component: PassengerDashboard,
+    canActivate: [authGuard, roleGuard],
+    data: { role: 'Passenger' },
+  },
+  {
+    path: 'driver',
+    component: DriverDashboard,
+    canActivate: [authGuard, roleGuard],
+    data: { role: 'Driver' },
+  },
+  //   { path: '', redirectTo: 'landing', pathMatch: 'full' },
+  { path: '**', redirectTo: 'login' },
 ];
-

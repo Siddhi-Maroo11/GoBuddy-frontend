@@ -39,8 +39,23 @@
           </p>
         </div>
         <div class="form-group">
+          <label>Mobile Number</label>
+          <input type="tel" #phoneInput formControlName="mobile" (keypress)="onlyNumbers($event)" />
+          <p
+            class="error"
+            *ngIf="signupForm.get('mobile')?.touched && signupForm.get('mobile')?.invalid"
+          >
+            Enter valid mobile number
+          </p>
+        </div>
+        <div class="form-group password-wrapper">
           <label>Password</label>
-          <input type="password" formControlName="password" />
+          <div class="password-container">
+            <input [type]="showPassword ? 'text' : 'password'" formControlName="password" />
+            <span class="eye-icon" (click)="togglePassword()">
+              <i [class]="showPassword ? 'fa fa-eye-slash' : 'fa fa-eye'"></i>
+            </span>
+          </div>
           <p
             class="error"
             *ngIf="signupForm.get('password')?.touched && signupForm.get('password')?.invalid"
@@ -58,6 +73,16 @@
           <div class="form-group">
             <label>Vehicle Model</label>
             <input type="text" formControlName="vehicleModel" />
+          </div>
+          <div class="form-group">
+            <label>Total Seats</label>
+            <input type="number" formControlName="totalSeats" min="2" max="6" />
+            <p
+              class="error"
+              *ngIf="signupForm.get('totalSeats')?.touched && signupForm.get('totalSeats')?.invalid"
+            >
+              Seats must be between 2 and 6
+            </p>
           </div>
           <div class="form-group">
             <label>Vehicle Number</label>
@@ -86,11 +111,16 @@
           <div class="form-group">
             <label>Upload License Image</label>
             <input
+              #licenseInput
               type="file"
-              formControlName="licenseImage"
               accept="image/*"
               (change)="onFileSelect($event, 'licenseImage')"
             />
+            <div class="file-preview" *ngIf="signupForm.get('licenseImage')?.value">
+              <button type="button" (click)="removeFile('licenseImage', licenseInput)">
+                Remove
+              </button>
+            </div>
             <p
               class="error"
               *ngIf="
@@ -103,12 +133,17 @@
           <div class="form-group">
             <label>Upload Vehicle Images (2 required)</label>
             <input
+              #vehicleInput
               type="file"
               multiple
               accept="image/*"
-              formControlName="vehicleImages"
               (change)="onFileSelect($event, 'vehicleImages')"
             />
+            <div class="file-preview" *ngIf="signupForm.get('vehicleImages')?.value">
+              <button type="button" (click)="removeFile('vehicleImages', vehicleInput)">
+                Remove
+              </button>
+            </div>
             <p
               class="error"
               *ngIf="

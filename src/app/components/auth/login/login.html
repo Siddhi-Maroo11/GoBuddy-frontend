@@ -26,15 +26,20 @@
           Enter valid email format
         </p>
       </div>
-      <div class="form-group">
+      <div class="form-group password-wrapper">
         <label>Password</label>
-        <input
-          type="password"
-          formControlName="password"
-          required
-          pattern="^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$"
-          placeholder="Enter your password"
-        />
+        <div class="password-container">
+          <input
+            [type]="showPassword ? 'text' : 'password'"
+            formControlName="password"
+            required
+            pattern="^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$"
+            placeholder="Enter your password"
+          />
+          <span class="eye-icon" (click)="togglePassword()">
+            <i [class]="showPassword ? 'fa fa-eye-slash' : 'fa fa-eye'"></i>
+          </span>
+        </div>
         <p
           class="error"
           *ngIf="
