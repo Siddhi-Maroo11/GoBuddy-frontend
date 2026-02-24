@@ -5,8 +5,10 @@ import { DriverDashboard } from './components/driver/driver-dashboard/driver-das
 import { authGuard } from './guards/auth-guard';
 import { roleGuard } from './guards/role-guard';
 import { loginGuard } from './guards/login-guard';
+import { Landing } from './components/landing/landing';
 
 export const routes: Routes = [
+    { path: '', component: Landing },
     { path: 'login', component: Login , canActivate: [loginGuard] },
     {
         path: 'passenger',
@@ -23,10 +25,5 @@ export const routes: Routes = [
     { path: '', redirectTo: 'landing', pathMatch: 'full' },
     { path: '**', redirectTo: 'login'}
 
-import { Landing } from './components/landing/landing';
-
-export const routes: Routes = [
-  { path: '', component: Landing },
-  { path: '**', redirectTo: '' },
 ];
 

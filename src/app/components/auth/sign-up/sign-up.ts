@@ -3,12 +3,12 @@ import { CommonModule } from '@angular/common';
 import {
   FormsModule,
   FormGroup,
-  FormControl,
   ReactiveFormsModule,
   Validators,
   AbstractControl,
   FormBuilder,
 } from '@angular/forms';
+import { AuthService } from '../../../services/auth.service';
 
 @Component({
   selector: 'app-signup',
@@ -20,32 +20,22 @@ import {
 export class Signup {
   @Output() closeEvent = new EventEmitter<void>();
   signupForm: FormGroup;
-  constructor(private fb: FormBuilder) {
+
+  constructor(private fb: FormBuilder, private authService: AuthService) {
     this.signupForm = this.fb.group({
       fullName: ['', [Validators.required, Validators.pattern(/^[A-Za-z]+(?: [A-Za-z]+)*$/)]],
       dob: ['', [Validators.required, this.minimumAgeValidator(18)]],
-      email: [
-        '',
-        [
-          Validators.required,
-          Validators.email,
-          Validators.pattern(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[A-Za-z]{2,}$/),
-        ],
-      ],
-      password: [
-        '',
-        [
-          Validators.required,
-          Validators.pattern(/^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/),
-        ],
-      ],
+      email: ['', [Validators.required, Validators.email]],
+      password: ['', [Validators.required]],
+
       isDriver: [false],
       vehicleModel: [''],
       vehicleNumber: [''],
       licenseNumber: [''],
-      licenseImage: ['', Validators.required],
-      vehicleImages: ['', Validators.required],
+      licenseImage: [''],
+      vehicleImages: [''],
     });
+
     this.signupForm.get('isDriver')?.valueChanges.subscribe((isDriver) => {
       if (isDriver) {
         this.enableDriverFields();
@@ -58,74 +48,103 @@ export class Signup {
         this.signupForm.get('licenseImage')?.reset();
         this.signupForm.get('vehicleImages')?.reset();
       }
+
       this.signupForm.get('licenseImage')?.updateValueAndValidity();
       this.signupForm.get('vehicleImages')?.updateValueAndValidity();
     });
   }
+
   minimumAgeValidator(minAge: number) {
     return (control: AbstractControl) => {
       const dob = new Date(control.value);
       const today = new Date();
-      if (isNaN(dob.getTime())) return { invalidDob: true };
       const age = today.getFullYear() - dob.getFullYear();
-      const is18 = age > minAge;
-      return is18 ? null : { underAge: true };
+      return age >= minAge ? null : { underAge: true };
     };
   }
-  trimFormValues() {
-    Object.keys(this.signupForm.controls).forEach((key) => {
-      let value = this.signupForm.get(key)?.value;
-      if (typeof value === 'string') {
-        value = value.trim().replace(/\s+/g, ' ');
-        this.signupForm.get(key)?.setValue(value);
-      }
-    });
-  }
+
   enableDriverFields() {
     this.signupForm.get('vehicleModel')?.setValidators([Validators.required]);
-    this.signupForm
-      .get('vehicleNumber')
-      ?.setValidators([
-        Validators.required,
-        Validators.pattern(/^[A-Z]{2}[0-9]{2}[A-Z]{2}[0-9]{4}$/),
-      ]);
-    this.signupForm
-      .get('licenseNumber')
-      ?.setValidators([Validators.required, Validators.pattern(/^[A-Z0-9]{10,15}$/)]);
+    this.signupForm.get('vehicleNumber')?.setValidators([Validators.required]);
+    this.signupForm.get('licenseNumber')?.setValidators([Validators.required]);
   }
+
   disableDriverFields() {
     this.signupForm.get('vehicleModel')?.clearValidators();
     this.signupForm.get('vehicleNumber')?.clearValidators();
     this.signupForm.get('licenseNumber')?.clearValidators();
-    this.signupForm.get('vehicleModel')?.reset();
-    this.signupForm.get('vehicleNumber')?.reset();
-    this.signupForm.get('licenseNumber')?.reset();
   }
+
   onSubmit() {
-    this.trimFormValues();
     if (this.signupForm.invalid) {
       this.signupForm.markAllAsTouched();
       return;
     }
-    console.log('final form ka data:', this.signupForm.value);
-  }
-  onFileSelect(event: any, controlName: string) {
-    const files = event.target.files;
-    if (controlName === 'licenseImage') {
-      if (files.length === 1) {
-        this.signupForm.get('licenseImage')?.setValue(files[0]);
-        this.signupForm.get('licenseImage')?.setErrors(null);
-      } else {
-        this.signupForm.get('licenseImage')?.setErrors({ required: true });
+
+    const formValue = this.signupForm.value;
+
+    if (!formValue.isDriver) {
+      // ✅ Passenger payload dynamic, backend DTO compatible
+      const payload = {
+        Name: formValue.fullName,
+        Email: formValue.email,
+        Password: formValue.password,
+        Dob: formValue.dob,
+        Role: "Passenger",
+      };
+
+      this.authService.signup(payload).subscribe({
+        next: () => {
+          alert('Passenger Signup Successful');
+          this.signupForm.reset();
+        },
+        error: (err) => console.error(err),
+      });
+
+      return;
+    }
+
+    // ✅ Driver payload with FormData for file uploads
+    const formData = new FormData();
+    formData.append('Name', formValue.fullName);
+    formData.append('Email', formValue.email);
+    formData.append('Password', formValue.password);
+    formData.append('Dob', formValue.dob);
+    formData.append('Role', 'Driver');
+
+    // Driver-specific fields
+    formData.append('VehicleModel', formValue.vehicleModel);
+    formData.append('VehicleNumber', formValue.vehicleNumber);
+    formData.append('LicenseNumber', formValue.licenseNumber);
+
+    if (formValue.licenseImage) {
+      formData.append('LicenseImage', formValue.licenseImage);
+    }
+
+    if (formValue.vehicleImages && formValue.vehicleImages.length) {
+      for (let file of formValue.vehicleImages) {
+        formData.append('VehicleImages', file);
       }
     }
+
+    this.authService.signup(formData).subscribe({
+      next: () => {
+        alert('Driver Signup Successful');
+        this.signupForm.reset();
+      },
+      error: (err) => console.error(err),
+    });
+  }
+
+  onFileSelect(event: any, controlName: string) {
+    const files = event.target.files;
+
+    if (controlName === 'licenseImage') {
+      this.signupForm.get('licenseImage')?.setValue(files[0]);
+    }
+
     if (controlName === 'vehicleImages') {
-      if (files.length === 2) {
-        this.signupForm.get('vehicleImages')?.setValue(files);
-        this.signupForm.get('vehicleImages')?.setErrors(null);
-      } else {
-        this.signupForm.get('vehicleImages')?.setErrors({ required: true });
-      }
+      this.signupForm.get('vehicleImages')?.setValue(files);
     }
   }
 }
