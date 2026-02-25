@@ -79,6 +79,26 @@ input.ng-invalid.ng-touched {
   font-size: 20px;
   cursor: pointer;
 }
+.password-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-container input {
+  width: 100%;
+}
+
+.eye-icon {
+  position: absolute;
+  right: 12px;
+  cursor: pointer;
+  color: black;
+}
+
+.eye-icon:hover {
+  color: #5b2dab;
+}
 
 @keyframes fadeIn {
   from {

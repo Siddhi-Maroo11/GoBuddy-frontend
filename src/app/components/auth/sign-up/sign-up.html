@@ -43,11 +43,22 @@
         </div>
 
         <div class="form-group">
+          <label>Mobile Number</label>
+          <input type="tel" #phoneInput formControlName="mobile" (keypress)="onlyNumbers($event)" />
+          <p
+            class="error"
+            *ngIf="signupForm.get('mobile')?.touched && signupForm.get('mobile')?.invalid"
+          >
+            Enter valid mobile number
+          </p>
+        </div>
+        <div class="form-group password-wrapper">
           <label>Password</label>
           <input type="password" formControlName="password" />
-
-          <p class="error"
-             *ngIf="signupForm.get('password')?.touched && signupForm.get('password')?.invalid">
+          <p
+            class="error"
+            *ngIf="signupForm.get('password')?.touched && signupForm.get('password')?.invalid"
+          >
             8+ chars, uppercase, lowercase, number & special char required
           </p>
         </div>
@@ -65,7 +76,6 @@
             <label>Vehicle Model</label>
             <input type="text" formControlName="vehicleModel" />
           </div>
-
           <div class="form-group">
             <label>Vehicle Number</label>
             <input type="text" formControlName="vehicleNumber" />
@@ -88,27 +98,37 @@
 
           <div class="form-group">
             <label>Upload License Image</label>
-
-            <input type="file"
-                   accept="image/*"
-                   (change)="onFileSelect($event, 'licenseImage')" />
-
-            <p class="error"
-               *ngIf="signupForm.get('licenseImage')?.touched && signupForm.get('licenseImage')?.invalid">
+            <input
+              type="file"
+              formControlName="licenseImage"
+              accept="image/*"
+              (change)="onFileSelect($event, 'licenseImage')"
+            />
+            <p
+              class="error"
+              *ngIf="
+                signupForm.get('licenseImage')?.touched && signupForm.get('licenseImage')?.invalid
+              "
+            >
               License image is required
             </p>
           </div>
 
           <div class="form-group">
             <label>Upload Vehicle Images (2 required)</label>
-
-            <input type="file"
-                   multiple
-                   accept="image/*"
-                   (change)="onFileSelect($event, 'vehicleImages')" />
-
-            <p class="error"
-               *ngIf="signupForm.get('vehicleImages')?.touched && signupForm.get('vehicleImages')?.invalid">
+            <input
+              type="file"
+              multiple
+              accept="image/*"
+              formControlName="vehicleImages"
+              (change)="onFileSelect($event, 'vehicleImages')"
+            />
+            <p
+              class="error"
+              *ngIf="
+                signupForm.get('vehicleImages')?.touched && signupForm.get('vehicleImages')?.invalid
+              "
+            >
               Please upload 2 vehicle images
             </p>
           </div>

@@ -100,6 +100,50 @@ input.ng-invalid.ng-touched {
   cursor: pointer;
 }
 
+.password-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-container input {
+  width: 100%;
+}
+
+.eye-icon {
+  position: absolute;
+  right: 10px;
+  cursor: pointer;
+}
+
+::ng-deep .iti {
+  width: 100% !important;
+}
+
+::ng-deep .iti input {
+  width: 100% !important;
+  padding-left: 90px !important;
+}
+
+::ng-deep .iti__flag-container {
+  left: 10px;
+}
+
+.file-preview {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 6px;
+}
+
+.file-preview button {
+  background: none;
+  border: none;
+  color: #d9534f;
+  cursor: pointer;
+  font-size: 13px;
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;
