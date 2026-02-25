@@ -1,6 +1,7 @@
 import { Component, EventEmitter, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormControl, FormGroup } from '@angular/forms';
+import { ReactiveFormsModule, FormControl, FormGroup, FormBuilder } from '@angular/forms';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-login',
@@ -10,6 +11,10 @@ import { ReactiveFormsModule, FormControl, FormGroup } from '@angular/forms';
   styleUrl: './login.scss',
 })
 export class Login {
+  constructor(
+    private fb: FormBuilder,
+    private router: Router,
+  ) {}
   showPassword: boolean = false;
   togglePassword() {
     this.showPassword = !this.showPassword;
@@ -20,8 +25,11 @@ export class Login {
   });
   @Output() closeEvent = new EventEmitter<void>();
   onSubmit() {
-    if (this.loginForm.valid) {
-      console.log(this.loginForm.value);
+    if (this.loginForm.invalid) {
+      this.loginForm.markAllAsTouched();
+      return;
     }
+    console.log('Login data:', this.loginForm.value);
+    this.router.navigate(['/map']);
   }
 }
