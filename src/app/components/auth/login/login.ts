@@ -1,6 +1,7 @@
 import { Component, EventEmitter, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormControl, FormGroup, FormBuilder } from '@angular/forms';
+import { ReactiveFormsModule, FormControl, FormGroup } from '@angular/forms';
+import { AuthService } from '../../../services/auth.service';
 import { Router } from '@angular/router';
 
 @Component({
@@ -8,13 +9,11 @@ import { Router } from '@angular/router';
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule],
   templateUrl: './login.html',
-  styleUrl: './login.scss',
+  styleUrls: ['./login.scss'], 
 })
 export class Login {
-  constructor(
-    private fb: FormBuilder,
-    private router: Router,
-  ) {}
+  constructor(private authService: AuthService, private router: Router) {}
+  @Output() closeEvent = new EventEmitter<void>();
   showPassword: boolean = false;
   togglePassword() {
     this.showPassword = !this.showPassword;
@@ -23,13 +22,27 @@ export class Login {
     email: new FormControl(''),
     password: new FormControl(''),
   });
-  @Output() closeEvent = new EventEmitter<void>();
+
   onSubmit() {
-    if (this.loginForm.invalid) {
-      this.loginForm.markAllAsTouched();
-      return;
+    if (this.loginForm.valid) {
+      this.authService.login(this.loginForm.value).subscribe({
+        next: (res: any) => {
+          console.log('Login Success:', res);
+
+          if (res.token) {
+              localStorage.setItem('token', res.token);
+              console.log('Token safely stored:', localStorage.getItem('token'));
+
+              alert('Login Successful');
+          } else {
+            console.warn('Token not found in response!');
+          }
+        },
+        error: (err: any) => {
+          console.log('Login Error:', err);
+          alert('Invalid Email or Password');
+        }
+      });
     }
-    console.log('Login data:', this.loginForm.value);
-    this.router.navigate(['/map']);
   }
 }

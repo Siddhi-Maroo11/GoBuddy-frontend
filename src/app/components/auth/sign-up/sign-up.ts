@@ -11,12 +11,16 @@ import { CommonModule } from '@angular/common';
 import {
   FormsModule,
   FormGroup,
-  FormControl,
   ReactiveFormsModule,
   Validators,
   AbstractControl,
   FormBuilder,
 } from '@angular/forms';
+<<<<<<< HEAD
+import { AuthService } from '../../../services/auth.service';
+
+=======
+>>>>>>> 82d4a52abbf4772b5156a7e97633798b23f675cb
 @Component({
   selector: 'app-signup',
   standalone: true,
@@ -30,6 +34,16 @@ export class Signup implements AfterViewInit {
   @Output() closeEvent = new EventEmitter<void>();
   showPassword: boolean = false;
   signupForm: FormGroup;
+<<<<<<< HEAD
+
+  constructor(private fb: FormBuilder, private authService: AuthService) {
+    this.signupForm = this.fb.group({
+      fullName: ['', [Validators.required, Validators.pattern(/^[A-Za-z]+(?: [A-Za-z]+)*$/)]],
+      dob: ['', [Validators.required, this.minimumAgeValidator(18)]],
+      email: ['', [Validators.required, Validators.email]],
+      password: ['', [Validators.required]],
+
+=======
   togglePassword() {
     this.showPassword = !this.showPassword;
   }
@@ -67,6 +81,7 @@ export class Signup implements AfterViewInit {
           Validators.pattern(/^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/),
         ],
       ],
+>>>>>>> 82d4a52abbf4772b5156a7e97633798b23f675cb
       isDriver: [false],
       vehicleModel: [''],
       totalSeats: [''],
@@ -75,6 +90,7 @@ export class Signup implements AfterViewInit {
       licenseImage: [''],
       vehicleImages: [''],
     });
+
     this.signupForm.get('isDriver')?.valueChanges.subscribe((isDriver) => {
       if (isDriver) {
         this.enableDriverFields();
@@ -87,6 +103,7 @@ export class Signup implements AfterViewInit {
         this.signupForm.get('licenseImage')?.reset();
         this.signupForm.get('vehicleImages')?.reset();
       }
+
       this.signupForm.get('licenseImage')?.updateValueAndValidity();
       this.signupForm.get('vehicleImages')?.updateValueAndValidity();
       this.signupForm.get('totalSeats')?.updateValueAndValidity();
@@ -107,13 +124,13 @@ export class Signup implements AfterViewInit {
     return (control: AbstractControl) => {
       const dob = new Date(control.value);
       const today = new Date();
-      if (isNaN(dob.getTime())) return { invalidDob: true };
       const age = today.getFullYear() - dob.getFullYear();
-      const is18 = age > minAge;
-      return is18 ? null : { underAge: true };
+      return age >= minAge ? null : { underAge: true };
     };
   }
 
+<<<<<<< HEAD
+=======
   trimFormValues() {
     Object.keys(this.signupForm.controls).forEach((key) => {
       let value = this.signupForm.get(key)?.value;
@@ -140,20 +157,14 @@ export class Signup implements AfterViewInit {
     }
   }
 
+>>>>>>> 82d4a52abbf4772b5156a7e97633798b23f675cb
   enableDriverFields() {
     this.signupForm
       .get('totalSeats')
       ?.setValidators([Validators.required, Validators.min(2), Validators.max(6)]);
     this.signupForm.get('vehicleModel')?.setValidators([Validators.required]);
-    this.signupForm
-      .get('vehicleNumber')
-      ?.setValidators([
-        Validators.required,
-        Validators.pattern(/^[A-Z]{2}[0-9]{2}[A-Z]{2}[0-9]{4}$/),
-      ]);
-    this.signupForm
-      .get('licenseNumber')
-      ?.setValidators([Validators.required, Validators.pattern(/^[A-Z0-9]{10,15}$/)]);
+    this.signupForm.get('vehicleNumber')?.setValidators([Validators.required]);
+    this.signupForm.get('licenseNumber')?.setValidators([Validators.required]);
   }
 
   disableDriverFields() {
@@ -161,6 +172,11 @@ export class Signup implements AfterViewInit {
     this.signupForm.get('totalSeats')?.clearValidators();
     this.signupForm.get('vehicleNumber')?.clearValidators();
     this.signupForm.get('licenseNumber')?.clearValidators();
+<<<<<<< HEAD
+  }
+
+  onSubmit() {
+=======
     this.signupForm.get('vehicleModel')?.reset();
     this.signupForm.get('totalSeats')?.reset();
     this.signupForm.get('vehicleNumber')?.reset();
@@ -172,30 +188,80 @@ export class Signup implements AfterViewInit {
       this.signupForm.get('mobile')?.setErrors({ invalid: true });
     }
     this.trimFormValues();
+>>>>>>> 82d4a52abbf4772b5156a7e97633798b23f675cb
     if (this.signupForm.invalid) {
       this.signupForm.markAllAsTouched();
       return;
     }
-    console.log('final form ka data:', this.signupForm.value);
-  }
-  
-  onFileSelect(event: any, controlName: string) {
-    const files = event.target.files;
-    if (controlName === 'licenseImage') {
-      if (files.length === 1) {
-        this.signupForm.get('licenseImage')?.setValue(files[0]);
-        this.signupForm.get('licenseImage')?.setErrors(null);
-      } else {
-        this.signupForm.get('licenseImage')?.setErrors({ required: true });
+
+    const formValue = this.signupForm.value;
+
+    if (!formValue.isDriver) {
+      // ✅ Passenger payload dynamic, backend DTO compatible
+      const payload = {
+        Name: formValue.fullName,
+        Email: formValue.email,
+        Password: formValue.password,
+        Dob: formValue.dob,
+        Role: "Passenger",
+      };
+
+      this.authService.signup(payload).subscribe({
+        next: () => {
+          alert('Passenger Signup Successful');
+          this.signupForm.reset();
+        },
+        error: (err) => console.error(err),
+      });
+
+      return;
+    }
+
+    // ✅ Driver payload with FormData for file uploads
+    const formData = new FormData();
+    formData.append('Name', formValue.fullName);
+    formData.append('Email', formValue.email);
+    formData.append('Password', formValue.password);
+    formData.append('Dob', formValue.dob);
+    formData.append('Role', 'Driver');
+
+    // Driver-specific fields
+    formData.append('VehicleModel', formValue.vehicleModel);
+    formData.append('VehicleNumber', formValue.vehicleNumber);
+    formData.append('LicenseNumber', formValue.licenseNumber);
+
+    if (formValue.licenseImage) {
+      formData.append('LicenseImage', formValue.licenseImage);
+    }
+
+    if (formValue.vehicleImages && formValue.vehicleImages.length) {
+      for (let file of formValue.vehicleImages) {
+        formData.append('VehicleImages', file);
       }
     }
+
+    this.authService.signup(formData).subscribe({
+      next: () => {
+        alert('Driver Signup Successful');
+        this.signupForm.reset();
+      },
+      error: (err) => console.error(err),
+    });
+  }
+<<<<<<< HEAD
+
+=======
+  
+>>>>>>> 82d4a52abbf4772b5156a7e97633798b23f675cb
+  onFileSelect(event: any, controlName: string) {
+    const files = event.target.files;
+
+    if (controlName === 'licenseImage') {
+      this.signupForm.get('licenseImage')?.setValue(files[0]);
+    }
+
     if (controlName === 'vehicleImages') {
-      if (files.length === 2) {
-        this.signupForm.get('vehicleImages')?.setValue(files);
-        this.signupForm.get('vehicleImages')?.setErrors(null);
-      } else {
-        this.signupForm.get('vehicleImages')?.setErrors({ required: true });
-      }
+      this.signupForm.get('vehicleImages')?.setValue(files);
     }
   }
 }
