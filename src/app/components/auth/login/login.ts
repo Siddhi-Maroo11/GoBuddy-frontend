@@ -1,53 +1,67 @@
 import { Component, EventEmitter, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormControl, FormGroup } from '@angular/forms';
-import { AuthService } from '../../../services/auth.service';
 import { Router } from '@angular/router';
+import { AuthService } from '../../../services/auth.service';
+import {jwtDecode} from 'jwt-decode';
 
 @Component({
   selector: 'app-login',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule],
   templateUrl: './login.html',
-  styleUrls: ['./login.scss'], 
+  styleUrls: ['./login.scss']
 })
 export class Login {
-<<<<<<< HEAD
+  @Output() closeEvent = new EventEmitter<void>();
+  showPassword = false;
+
+  loginForm = new FormGroup({
+    email: new FormControl(''),
+    password: new FormControl('')
+  });
+
   constructor(private authService: AuthService, private router: Router) {}
 
-  @Output() closeEvent = new EventEmitter<void>();
-
-=======
-  showPassword: boolean = false;
   togglePassword() {
     this.showPassword = !this.showPassword;
   }
->>>>>>> 82d4a52abbf4772b5156a7e97633798b23f675cb
-  loginForm = new FormGroup({
-    email: new FormControl(''),
-    password: new FormControl(''),
-  });
 
   onSubmit() {
-    if (this.loginForm.valid) {
-      this.authService.login(this.loginForm.value).subscribe({
-        next: (res: any) => {
-          console.log('Login Success:', res);
+    if (!this.loginForm.valid) return;
 
-          if (res.token) {
-              localStorage.setItem('token', res.token);
-              console.log('Token safely stored:', localStorage.getItem('token'));
+    const payload = {
+      Email: this.loginForm.value.email,
+      Password: this.loginForm.value.password
+    };
 
-              alert('Login Successful');
+    this.authService.login(payload).subscribe({
+      next: (res: any) => {
+        if (res?.token) {
+          localStorage.setItem('token', res.token);
+
+          const decoded: any = (jwtDecode as any)(res.token);
+          console.log('Decoded JWT:', decoded['http://schemas.microsoft.com/ws/2008/06/identity/claims/role']);
+
+          const role = decoded.role; 
+
+          alert('Login Successful');
+
+          if (role === 'Passenger') {
+            this.router.navigate(['/passenger']);
+          } else if (role === 'Driver') {
+            this.router.navigate(['/driver']);
           } else {
-            console.warn('Token not found in response!');
+            this.router.navigate(['/']);
           }
-        },
-        error: (err: any) => {
-          console.log('Login Error:', err);
-          alert('Invalid Email or Password');
+        } else {
+          console.warn('Token not found in response!');
         }
-      });
-    }
+      },
+      error: (err: any) => {
+        console.log('Login Error:', err);
+        alert('Invalid Email or Password');
+      }
+    });
   }
 }
