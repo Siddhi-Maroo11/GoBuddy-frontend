@@ -1,1 +1,166 @@
 <p>passenger-dashboard works!</p>
+<div class="dashboard">
+  <nav class="navbar">
+    <div class="brand">
+      <span class="brand-dot"></span>
+      GoBuddy
+    </div>
+ 
+    <div class="nav-search">
+      <div class="search-field" [class.active]="activeInput === 'pickup'">
+        <span class="field-dot green"></span>
+        <input
+          type="text"
+          placeholder="Pickup location"
+          [(ngModel)]="pickupQuery"
+          (focus)="setActiveInput('pickup')"
+          (input)="onPickupInput()"
+          class="search-input"
+        />
+        <button class="gps-btn" (click)="useCurrentLocation()">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+          >
+            <circle cx="12" cy="12" r="3" />
+            <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+          </svg>
+        </button>
+        @if (pickupSuggestions.length > 0) {
+          <div class="suggestions">
+            @for (s of pickupSuggestions; track s.lon) {
+              <div class="suggestion-item" (click)="selectPickup(s)">
+                {{ s.display_name | slice: 0 : 55 }}...
+              </div>
+            }
+          </div>
+        }
+      </div>
+ 
+      <div class="field-sep"></div>
+ 
+      <div class="search-field" [class.active]="activeInput === 'drop'">
+        <span class="field-dot red"></span>
+        <input
+          type="text"
+          placeholder="Drop location"
+          [(ngModel)]="dropQuery"
+          (focus)="setActiveInput('drop')"
+          (input)="onDropInput()"
+          class="search-input"
+        />
+        @if (dropSuggestions.length > 0) {
+          <div class="suggestions">
+            @for (s of dropSuggestions; track s.lon) {
+              <div class="suggestion-item" (click)="selectDrop(s)">
+                {{ s.display_name | slice: 0 : 55 }}...
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+ 
+    <button class="logout-btn" (click)="logout()">Logout</button>
+  </nav>
+ 
+  <div class="content">
+    <div id="passenger-map" class="map"></div>
+ 
+    @if (selectedPickup && selectedDrop) {
+      <div class="sidebar">
+        @if (rideAccepted && acceptedDriver) {
+          <div class="sidebar-header">
+            <span class="sidebar-title">Ride Confirmed</span>
+          </div>
+ 
+          <div class="info-block">
+            <div class="info-row">
+              <span class="info-label">Driver</span>
+              <span class="info-value">{{ acceptedDriver.driverName }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Vehicle</span>
+              <span class="info-value">{{ acceptedDriver.vehicleModel }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Pickup</span>
+              <span class="info-value">{{ selectedPickup.name }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Drop</span>
+              <span class="info-value">{{ selectedDrop.name }}</span>
+            </div>
+          </div>
+ 
+          <div class="pin-block">
+            <p class="pin-label">Boarding PIN</p>
+            <div class="pin-digits">
+              @for (digit of passengerPin?.split(''); track $index) {
+                <span class="pin-digit">{{ digit }}</span>
+              }
+            </div>
+          </div>
+        } @else {
+          <div class="sidebar-header">
+            <span class="sidebar-title">Nearby Drivers</span>
+            @if (!isSearching && nearbyDrivers.length > 0) {
+              <span class="driver-count">{{ nearbyDrivers.length }}</span>
+            }
+          </div>
+ 
+          @if (isSearching) {
+            <div class="state-box">
+              <div class="spinner"></div>
+              <span class="state-sub">Searching for drivers...</span>
+            </div>
+          } @else if (nearbyDrivers.length === 0) {
+            <div class="state-box">
+              <p class="state-title">No drivers nearby</p>
+              <span class="state-sub">Updates automatically when a driver comes online.</span>
+            </div>
+          } @else {
+            <div class="drivers-list">
+              @for (driver of nearbyDrivers; track driver.connectionId) {
+                <div
+                  class="driver-card"
+                  [class.selected]="selectedDriver?.connectionId === driver.connectionId"
+                  (click)="selectDriver(driver)"
+                >
+                  <div class="driver-info">
+                    <span class="driver-name">{{ driver.driverName }}</span>
+                    <span class="driver-vehicle">{{ driver.vehicleModel }}</span>
+                    <span class="driver-dist">{{ driver.distanceKm }} km away</span>
+                  </div>
+                  <button
+                    class="request-btn"
+                    [disabled]="rideAccepted || requestingDriverIds.has(driver.connectionId)"
+                    (click)="sendRideRequest(driver); $event.stopPropagation()"
+                  >
+                    {{ requestingDriverIds.has(driver.connectionId) ? 'Waiting...' : 'Request' }}
+                  </button>
+                </div>
+              }
+            </div>
+ 
+            @if (requestError) {
+              <div class="msg-box error">{{ requestError }}</div>
+            }
+ 
+            @if (rideRejected) {
+              <div class="msg-box error">Driver declined your request. Try another driver.</div>
+            }
+ 
+            @if (rideTimeout) {
+              <div class="msg-box warn">Driver did not respond. Try another driver.</div>
+            }
+          }
+        }
+      </div>
+    }
+  </div>
+</div>
