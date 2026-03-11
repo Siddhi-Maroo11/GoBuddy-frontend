@@ -1,1 +1,113 @@
-<p>driver-dashboard works!</p>
+<div class="dashboard">
+  <nav class="navbar">
+    <div class="brand">
+      <span class="brand-dot"></span>
+      GoBuddy
+    </div>
+
+    @if (!isOnline) {
+      <div class="nav-search">
+        <span class="field-dot"></span>
+        <input
+          type="text"
+          class="search-input"
+          placeholder="Set your location manually..."
+          [(ngModel)]="locationQuery"
+          (input)="onLocationInput()" />
+        @if (locationSuggestions.length > 0) {
+          <div class="suggestions">
+            @for (s of locationSuggestions; track s.lon) {
+              <div class="suggestion-item" (click)="selectManualLocation(s)">
+                {{ s.display_name | slice:0:55 }}...
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+
+    <div class="nav-right">
+      <div class="status-chip" [class.online]="isOnline">
+        <span class="chip-dot"></span>
+        {{ isOnline ? 'Online' : 'Offline' }}
+      </div>
+      <button class="logout-btn" (click)="logout()">Logout</button>
+    </div>
+  </nav>
+
+  <div id="driver-map" class="map"></div>
+
+  @if (incomingRequest) {
+    <div class="request-notification">
+      <div class="notif-header">
+        <span class="notif-title">New Ride Request</span>
+        <div class="timer-circle" [style.border-color]="getTimerColor()">
+          <span [style.color]="getTimerColor()">{{ timeLeft }}</span>
+        </div>
+      </div>
+      <div class="notif-body">
+        <div class="notif-row">
+          <span class="notif-label">Passenger</span>
+          <span class="notif-value">{{ incomingRequest.passengerName }}</span>
+        </div>
+        <div class="notif-row">
+          <span class="notif-label">Pickup</span>
+          <span class="notif-value">{{ incomingRequest.pickupName }}</span>
+        </div>
+        <div class="notif-row">
+          <span class="notif-label">Drop</span>
+          <span class="notif-value">{{ incomingRequest.dropName }}</span>
+        </div>
+      </div>
+      <div class="notif-actions">
+        <button class="notif-reject" (click)="rejectRequest()">Decline</button>
+        <button class="notif-accept" (click)="acceptRequest()">Accept</button>
+      </div>
+    </div>
+  }
+
+  @if (confirmedRide) {
+    <div class="confirmed-card">
+      <div class="confirmed-header">
+        <span class="confirmed-title">Ride Confirmed</span>
+      </div>
+      <div class="confirmed-body">
+        <div class="confirmed-row">
+          <span class="confirmed-label">Passenger</span>
+          <span class="confirmed-value">{{ confirmedRide.passengerName }}</span>
+        </div>
+        <div class="confirmed-row">
+          <span class="confirmed-label">Pickup</span>
+          <span class="confirmed-value">{{ confirmedRide.pickupName }}</span>
+        </div>
+        <div class="confirmed-row">
+          <span class="confirmed-label">Drop</span>
+          <span class="confirmed-value">{{ confirmedRide.dropName }}</span>
+        </div>
+      </div>
+    </div>
+  }
+
+  <div class="bottom-panel">
+    <div class="panel-info">
+      <span class="panel-label">
+        {{ isOnline ? 'You are accepting rides' : 'Go online to accept rides' }}
+      </span>
+      @if (currentLocation) {
+        <span class="panel-coords">
+          {{ currentLocation.lat | number:'1.4-4' }}, {{ currentLocation.lng | number:'1.4-4' }}
+        </span>
+      }
+    </div>
+    @if (locationError) {
+      <p class="error-text">{{ locationError }}</p>
+    }
+    <button
+      class="toggle-btn"
+      [class.online]="isOnline"
+      [disabled]="isConnecting"
+      (click)="toggleOnline()">
+      {{ isConnecting ? 'Locating...' : (isOnline ? 'Go Offline' : 'Go Online') }}
+    </button>
+  </div>
+</div>
