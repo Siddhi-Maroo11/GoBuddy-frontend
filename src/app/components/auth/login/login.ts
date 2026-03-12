@@ -1,15 +1,17 @@
 import { Component, EventEmitter, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormControl, FormGroup } from '@angular/forms';
-import { AuthService } from '../../../services/auth.service';
+import { ReactiveFormsModule, FormControl, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
+import { AuthService } from '../../../services/auth.service';
+import { jwtDecode } from 'jwt-decode';
+import { STRINGS } from '../../../constants/strings.constants';
 
 @Component({
   selector: 'app-login',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule],
   templateUrl: './login.html',
-  styleUrls: ['./login.scss'], 
+  styleUrls: ['./login.scss']
 })
 export class Login {
   constructor(private authService: AuthService, private router: Router) {}
@@ -19,30 +21,58 @@ export class Login {
     this.showPassword = !this.showPassword;
   }
   loginForm = new FormGroup({
-    email: new FormControl(''),
-    password: new FormControl(''),
+    email: new FormControl('', [Validators.required, Validators.email]),
+    password: new FormControl('', [Validators.required])
   });
 
-  onSubmit() {
-    if (this.loginForm.valid) {
-      this.authService.login(this.loginForm.value).subscribe({
-        next: (res: any) => {
-          console.log('Login Success:', res);
+  constructor(
+    private authService: AuthService,
+    private router: Router
+  ) { }
 
-          if (res.token) {
-              localStorage.setItem('token', res.token);
-              console.log('Token safely stored:', localStorage.getItem('token'));
+  togglePassword(): void {
+    this.showPassword = !this.showPassword;
+  }
 
-              alert('Login Successful');
-          } else {
-            console.warn('Token not found in response!');
+  onSubmit(): void {
+    if (this.loginForm.invalid) return;
+
+    const payload = {
+      Email: this.loginForm.value.email ?? '',
+      Password: this.loginForm.value.password ?? ''
+    };
+
+    this.authService.login(payload).subscribe({
+      next: (res: any) => {
+        if (res?.token) {
+          localStorage.setItem('token', res.token);
+
+          const decoded: any = jwtDecode(res.token);
+
+          const role =
+            decoded?.role ||
+            decoded?.['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'];
+
+          alert(STRINGS.LOGIN_SUCCESS);
+
+          if (role === 'Passenger') {
+            this.router.navigate(['/passenger']);
           }
-        },
-        error: (err: any) => {
-          console.log('Login Error:', err);
-          alert('Invalid Email or Password');
+          else if (role === 'Driver') {
+            this.router.navigate(['/driver']);
+          }
+          else {
+            this.router.navigate(['/']);
+          }
+
+        } else {
+          console.warn(STRINGS.TOKEN_NOT_FOUND);
         }
-      });
-    }
+      },
+      error: (err: any) => {
+        console.error('Login Error:', err);
+        alert(STRINGS.INVALID_LOGIN);
+      }
+    });
   }
 }
