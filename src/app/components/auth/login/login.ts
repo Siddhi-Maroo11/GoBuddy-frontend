@@ -14,10 +14,12 @@ import { STRINGS } from '../../../constants/strings.constants';
   styleUrls: ['./login.scss']
 })
 export class Login {
-
+  constructor(private authService: AuthService, private router: Router) {}
   @Output() closeEvent = new EventEmitter<void>();
-  showPassword = false;
-
+  showPassword: boolean = false;
+  togglePassword() {
+    this.showPassword = !this.showPassword;
+  }
   loginForm = new FormGroup({
     email: new FormControl('', [Validators.required, Validators.email]),
     password: new FormControl('', [Validators.required])
