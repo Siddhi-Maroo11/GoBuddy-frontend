@@ -12,17 +12,14 @@ import { Router } from '@angular/router';
   styleUrls: ['./login.scss'], 
 })
 export class Login {
-<<<<<<< HEAD
   constructor(private authService: AuthService, private router: Router) {}
 
   @Output() closeEvent = new EventEmitter<void>();
 
-=======
   showPassword: boolean = false;
   togglePassword() {
     this.showPassword = !this.showPassword;
   }
->>>>>>> 82d4a52abbf4772b5156a7e97633798b23f675cb
   loginForm = new FormGroup({
     email: new FormControl(''),
     password: new FormControl(''),

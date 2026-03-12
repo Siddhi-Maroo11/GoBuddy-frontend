@@ -1,6 +1,6 @@
 export const STRINGS = {
   brand: 'GoBuddy',
-
+ 
   nav: {
     logout: 'Logout',
     online: 'Online',
@@ -10,13 +10,13 @@ export const STRINGS = {
     goOffline: 'Go Offline',
     setLocation: 'Set your location manually...',
   },
-
+ 
   search: {
     pickup: 'Pickup location',
     drop: 'Drop location',
     searching: 'Searching for drivers...',
   },
-
+ 
   drivers: {
     nearby: 'Nearby Drivers',
     noDrivers: 'No drivers nearby',
@@ -25,7 +25,7 @@ export const STRINGS = {
     request: 'Request',
     waiting: 'Waiting...',
   },
-
+ 
   request: {
     waitingTitle: 'Waiting for driver',
     waitingSub: 'Driver has 20 seconds to respond.',
@@ -36,7 +36,7 @@ export const STRINGS = {
     driverOffline: 'Driver went offline.',
     noLongerAvailable: 'Driver is no longer available.',
   },
-
+ 
   ride: {
     confirmed: 'Ride Confirmed',
     driver: 'Driver',
@@ -47,22 +47,24 @@ export const STRINGS = {
     pinHint: 'Show this PIN to your driver when they arrive.',
     passenger: 'Passenger',
   },
-
+ 
   errors: {
     locationDenied: 'Location access denied.',
     geolocationNotSupported: 'Geolocation not supported.',
     noPendingRequest: 'No pending request found.',
     alreadyAccepted: 'Passenger already has a ride.',
   },
-
+ 
   status: {
     acceptingRides: 'You are accepting rides',
     goOnlinePrompt: 'Go online to accept rides',
   },
-
+ 
   popup: {
     pickup: 'Pickup',
   },
-
+ 
   currentLocation: 'Current Location',
+  empty: ''
 };
+ 
