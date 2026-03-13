@@ -63,6 +63,5 @@ export const STRINGS = {
   popup: {
     pickup: 'Pickup',
   },
-
   currentLocation: 'Current Location',
 };
