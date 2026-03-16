@@ -85,6 +85,5 @@ export class AuthService {
 
   logout(): void {
     localStorage.removeItem('token');
-
-  private apiUrl = `${environment.apiUrl}/Auth`;
+  }
 }
