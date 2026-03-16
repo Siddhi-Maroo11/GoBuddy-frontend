@@ -1,7 +1,7 @@
-import * as L from 'leaflet';
+import * as Leaflet from 'leaflet';
 
-export function createPickupIcon(): L.DivIcon {
-  return L.divIcon({
+export function createPickupIcon(): Leaflet.DivIcon {
+  return Leaflet.divIcon({
     className: '',
     html: `<div style="width:12px;height:12px;border-radius:50%;background:#22c55e;border:2.5px solid white;box-shadow:0 1px 5px rgba(34,197,94,0.6);"></div>`,
     iconSize: [12, 12],
@@ -9,8 +9,8 @@ export function createPickupIcon(): L.DivIcon {
   });
 }
 
-export function createDropIcon(): L.DivIcon {
-  return L.divIcon({
+export function createDropIcon(): Leaflet.DivIcon {
+  return Leaflet.divIcon({
     className: '',
     html: `<div style="width:14px;height:14px;border-radius:50%;background:#ef4444;border:3px solid white;box-shadow:0 2px 6px rgba(239,68,68,0.6);"></div>`,
     iconSize: [14, 14],
@@ -18,8 +18,8 @@ export function createDropIcon(): L.DivIcon {
   });
 }
 
-export function createDriverMarkerIcon(): L.DivIcon {
-  return L.divIcon({
+export function createDriverMarkerIcon(): Leaflet.DivIcon {
+  return Leaflet.divIcon({
     className: '',
     html: `
       <div style="position:relative;width:28px;height:28px;display:flex;align-items:center;justify-content:center;">
@@ -31,8 +31,8 @@ export function createDriverMarkerIcon(): L.DivIcon {
   });
 }
 
-export function createSelfDriverIcon(): L.DivIcon {
-  return L.divIcon({
+export function createSelfDriverIcon(): Leaflet.DivIcon {
+  return Leaflet.divIcon({
     className: '',
     html: `
       <div style="position:relative;width:60px;height:60px;display:flex;align-items:center;justify-content:center;">
