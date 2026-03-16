@@ -14,6 +14,7 @@ export class AuthService {
   private readonly NAME_KEY = 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name';
   private readonly VEHICLE_KEY = 'VehicleModel';
   private readonly ROLE_KEY = 'http://schemas.microsoft.com/ws/2008/06/identity/claims/role';
+  private readonly PIN_KEY = 'UserPin';
 
   constructor(private http: HttpClient) {}
 
@@ -56,7 +57,6 @@ export class AuthService {
     const decoded: any = jwtDecode(token);
     return decoded[this.ROLE_KEY] ?? null;
   }
-  private readonly PIN_KEY = 'UserPin';
 
   getUserPin(): string | null {
     const token = localStorage.getItem('token');
