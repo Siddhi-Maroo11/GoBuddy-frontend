@@ -15,7 +15,9 @@ export const API = {
   },
   nominatim: {
     search: (query: string) =>
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&countrycodes=in&accept-language=en`,
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+        query
+      )}&limit=5&countrycodes=in&accept-language=en`,
     reverse: (lat: number, lng: number) =>
       `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=en`,
   },
@@ -23,6 +25,16 @@ export const API = {
     route: (lng1: number, lat1: number, lng2: number, lat2: number) =>
       `https://router.project-osrm.org/route/v1/driving/${lng1},${lat1};${lng2},${lat2}?overview=full&geometries=geojson`,
   },
+};
+
+export const JWT_KEYS = {
+  USER_ID: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier',
+  NAME: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name',
+  VEHICLE: 'VehicleModel',
+  ROLE: 'http://schemas.microsoft.com/ws/2008/06/identity/claims/role',
+  PIN: 'UserPin',
+  AVAILABLE_SEATS: 'AvailableSeats',
+  RATE_PER_KM: 'RatePerKm',
 };
 
 export const DEFAULT_CITY = 'Jaipur';
