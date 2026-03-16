@@ -4,6 +4,21 @@ import { environment } from '../../environments/environment';
 import { Observable } from 'rxjs';
 import { jwtDecode } from 'jwt-decode';
 
+interface LoginRequest {
+  Email: string;
+  Password: string;
+}
+
+interface SignupRequest {
+  email: string;
+  password: string;
+  role: string;
+}
+
+interface AuthResponse {
+  token: string;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -70,5 +85,6 @@ export class AuthService {
 
   logout(): void {
     localStorage.removeItem('token');
-  }
+
+  private apiUrl = `${environment.apiUrl}/Auth`;
 }

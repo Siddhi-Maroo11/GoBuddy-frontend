@@ -7,6 +7,6 @@ export class TestService {
   constructor(private http: HttpClient) {}
 
   getData() {
-    return this.http.get('https://jsonplaceholder.typicode.com/posts'); // This API is juts used for testing and learning.
+    return this.http.get('https://jsonplaceholder.typicode.com/posts'); 
   }
 }
