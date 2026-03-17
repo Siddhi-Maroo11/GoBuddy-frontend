@@ -1,4 +1,3 @@
-<p>passenger-dashboard works!</p>
 <div class="dashboard">
   <nav class="navbar">
     <div class="brand">
@@ -32,9 +31,9 @@
         </button>
         @if (pickupSuggestions.length > 0) {
           <div class="suggestions">
-            @for (s of pickupSuggestions; track s.lon) {
-              <div class="suggestion-item" (click)="selectPickup(s)">
-                {{ s.display_name | slice: 0 : 55 }}...
+            @for (suggestion of pickupSuggestions; track suggestion.lon) {
+              <div class="suggestion-item" (click)="selectPickup(suggestion)">
+                {{ suggestion.display_name | slice: 0 : 55 }}...
               </div>
             }
           </div>
@@ -55,9 +54,9 @@
         />
         @if (dropSuggestions.length > 0) {
           <div class="suggestions">
-            @for (s of dropSuggestions; track s.lon) {
-              <div class="suggestion-item" (click)="selectDrop(s)">
-                {{ s.display_name | slice: 0 : 55 }}...
+            @for (suggestion of dropSuggestions; track suggestion.lon) {
+              <div class="suggestion-item" (click)="selectDrop(suggestion)">
+                {{ suggestion.display_name | slice: 0 : 55 }}...
               </div>
             }
           </div>

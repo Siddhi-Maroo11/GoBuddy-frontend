@@ -8,7 +8,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import * as L from 'leaflet';
+import * as Leaflet from 'leaflet';
 import * as signalR from '@microsoft/signalr';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../../services/auth.service';
@@ -60,13 +60,13 @@ export class PassengerDashboard implements AfterViewInit, AfterViewChecked, OnDe
   public selectedDriver: NearbyDriver | null = null;
   public isSearching: boolean = false;
  
-  private routeLayer: L.GeoJSON | null = null;
-  private driverRouteLayer: L.GeoJSON | null = null;
+  private routeLayer: Leaflet.GeoJSON | null = null;
+  private driverRouteLayer: Leaflet.GeoJSON | null = null;
   private lastSidebarState: boolean = false;
-  private map!: L.Map;
-  private pickupMarker: L.Marker | null = null;
-  private dropMarker: L.Marker | null = null;
-  private driverMarkers: Map<string, L.Marker> = new Map();
+  private map!: Leaflet.Map;
+  private pickupMarker: Leaflet.Marker | null = null;
+  private dropMarker: Leaflet.Marker | null = null;
+  private driverMarkers: Map<string, Leaflet.Marker> = new Map();
   private hubConnection!: signalR.HubConnection;
   private pickupDebounce: any;
   private dropDebounce: any;
@@ -98,16 +98,16 @@ export class PassengerDashboard implements AfterViewInit, AfterViewChecked, OnDe
   }
  
   private initMap(): void {
-    this.map = L.map('passenger-map', { zoomControl: false }).setView(
+    this.map = Leaflet.map('passenger-map', { zoomControl: false }).setView(
       DEFAULT_MAP_CENTER,
       DEFAULT_MAP_ZOOM,
     );
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    Leaflet.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors',
     }).addTo(this.map);
-    L.control.zoom({ position: 'bottomright' }).addTo(this.map);
+    Leaflet.control.zoom({ position: 'bottomright' }).addTo(this.map);
  
-    this.map.on('click', (e: L.LeafletMouseEvent) => {
+    this.map.on('click', (e: Leaflet.LeafletMouseEvent) => {
       const { lat, lng } = e.latlng;
       if (this.activeInput === 'pickup') {
         this.setPickup(lat, lng, `${lat.toFixed(4)}, ${lng.toFixed(4)}`);
@@ -124,11 +124,11 @@ export class PassengerDashboard implements AfterViewInit, AfterViewChecked, OnDe
  
   private placePickupMarker(lat: number, lng: number): void {
     if (this.pickupMarker) this.map.removeLayer(this.pickupMarker);
-    this.pickupMarker = L.marker([lat, lng], { icon: createPickupIcon(), draggable: true }).addTo(
+    this.pickupMarker = Leaflet.marker([lat, lng], { icon: createPickupIcon(), draggable: true }).addTo(
       this.map,
     );
     this.pickupMarker.on('dragend', (e) => {
-      const { lat, lng } = (e.target as L.Marker).getLatLng();
+      const { lat, lng } = (e.target as Leaflet.Marker).getLatLng();
       this.selectedPickup = { lat, lng, name: `${lat.toFixed(4)}, ${lng.toFixed(4)}` };
       this.reverseGeocode(lat, lng, 'pickup');
     });
@@ -136,11 +136,11 @@ export class PassengerDashboard implements AfterViewInit, AfterViewChecked, OnDe
  
   private placeDropMarker(lat: number, lng: number): void {
     if (this.dropMarker) this.map.removeLayer(this.dropMarker);
-    this.dropMarker = L.marker([lat, lng], { icon: createDropIcon(), draggable: true }).addTo(
+    this.dropMarker = Leaflet.marker([lat, lng], { icon: createDropIcon(), draggable: true }).addTo(
       this.map,
     );
     this.dropMarker.on('dragend', (e) => {
-      const { lat, lng } = (e.target as L.Marker).getLatLng();
+      const { lat, lng } = (e.target as Leaflet.Marker).getLatLng();
       this.selectedDrop = { lat, lng, name: `${lat.toFixed(4)}, ${lng.toFixed(4)}` };
       this.reverseGeocode(lat, lng, 'drop');
     });
@@ -151,7 +151,7 @@ export class PassengerDashboard implements AfterViewInit, AfterViewChecked, OnDe
       this.driverMarkers.get(driverId)!.setLatLng([lat, lng]);
       return;
     }
-    const marker: L.Marker = L.marker([lat, lng], { icon: createDriverMarkerIcon() }).addTo(
+    const marker: Leaflet.Marker = Leaflet.marker([lat, lng], { icon: createDriverMarkerIcon() }).addTo(
       this.map,
     );
     this.driverMarkers.set(driverId, marker);
@@ -187,7 +187,7 @@ export class PassengerDashboard implements AfterViewInit, AfterViewChecked, OnDe
       const data = await res.json();
       if (!data.routes?.length) return;
  
-      this.routeLayer = L.geoJSON(data.routes[0].geometry, {
+      this.routeLayer = Leaflet.geoJSON(data.routes[0].geometry, {
         style: { color: '#4285F4', weight: 5, opacity: 0.9, lineCap: 'round', lineJoin: 'round' },
       }).addTo(this.map);
  
@@ -219,7 +219,7 @@ export class PassengerDashboard implements AfterViewInit, AfterViewChecked, OnDe
       const data = await res.json();
       if (!data.routes?.length) return;
  
-      this.driverRouteLayer = L.geoJSON(data.routes[0].geometry, {
+      this.driverRouteLayer = Leaflet.geoJSON(data.routes[0].geometry, {
         style: { color: '#7c3aed', weight: 4, opacity: 0.8, lineCap: 'round', dashArray: '8,6' },
       }).addTo(this.map);
  
@@ -232,99 +232,108 @@ export class PassengerDashboard implements AfterViewInit, AfterViewChecked, OnDe
       console.error('Driver route error:', err);
     }
   }
- 
+
   private initSignalR(): void {
-    this.hubConnection = new signalR.HubConnectionBuilder()
-      .withUrl(API.signalR.hub, {
-        skipNegotiation: true,
-        transport: signalR.HttpTransportType.WebSockets,
-      })
-      .withAutomaticReconnect()
-      .build();
- 
-    this.hubConnection.on('RequestSent', () => {
-      this.requestSent = true;
-      this.cdr.detectChanges();
-    });
- 
-    this.hubConnection.on('DriverOnline', (data) => {
-      this.addDriverMarker(data.driverId, data.latitude, data.longitude);
-      if (this.selectedPickup && this.selectedDrop) this.findDrivers();
-      this.cdr.detectChanges();
-    });
- 
-    this.hubConnection.on('LocationUpdated', (data) => {
-      this.updateDriverMarker(data.driverId, data.latitude, data.longitude);
-      const existing = this.nearbyDrivers.find((d) => d.connectionId === data.driverId);
-      if (existing && this.selectedPickup) {
-        existing.latitude = data.latitude;
-        existing.longitude = data.longitude;
-        existing.distanceKm = calculateDistance(
-          this.selectedPickup.lat,
-          this.selectedPickup.lng,
-          data.latitude,
-          data.longitude,
-        );
-      }
-      this.cdr.detectChanges();
-    });
- 
-    this.hubConnection.on('DriverOffline', (data) => {
-      this.removeDriverMarker(data.driverId);
-      this.nearbyDrivers = this.nearbyDrivers.filter((d) => d.connectionId !== data.driverId);
-      if (this.selectedDriver?.connectionId === data.driverId) this.selectedDriver = null;
-      this.cdr.detectChanges();
-    });
- 
-    this.hubConnection.on('RequestFailed', (data) => {
-      this.requestError = data.message;
-      if (this.pendingDriverId) {
-        this.requestingDriverIds.delete(this.pendingDriverId);
-        this.pendingDriverId = null;
-      }
-      this.cdr.detectChanges();
-    });
- 
-    this.hubConnection.on('RideAccepted', (data) => {
-      this.requestSent = false;
-      this.rideAccepted = true;
-      this.rideRejected = false;
-      this.rideTimeout = false;
-      this.acceptedDriver = data;
-      this.passengerPin = this.authService.getUserPin();
-      this.requestingDriverIds.clear();
-      this.pendingDriverId = null;
-      this.drawDriverToPassengerRoute(data.driverLat, data.driverLng);
-      this.cdr.detectChanges();
-    });
- 
-    this.hubConnection.on('RideRejected', () => {
-      this.requestSent = false;
-      this.rideRejected = true;
-      this.rideAccepted = false;
-      if (this.pendingDriverId) {
-        this.requestingDriverIds.delete(this.pendingDriverId);
-        this.pendingDriverId = null;
-      }
-      this.cdr.detectChanges();
-    });
- 
-    this.hubConnection.on('RequestTimeout', () => {
-      this.requestSent = false;
-      this.rideTimeout = true;
-      if (this.pendingDriverId) {
-        this.requestingDriverIds.delete(this.pendingDriverId);
-        this.pendingDriverId = null;
-      }
-      this.cdr.detectChanges();
-    });
- 
-    this.hubConnection
-      .start()
-      .then(() => this.fetchExistingDrivers())
-      .catch((err) => console.error('SignalR error:', err));
+  this.hubConnection = new signalR.HubConnectionBuilder()
+    .withUrl(API.signalR.hub, {
+      skipNegotiation: true,
+      transport: signalR.HttpTransportType.WebSockets,
+    })
+    .withAutomaticReconnect()
+    .build();
+
+  this.registerSignalRHandlers();
+
+  this.hubConnection
+    .start()
+    .then(() => this.fetchExistingDrivers())
+    .catch((err) => console.error('SignalR error:', err));
+}
+
+private registerSignalRHandlers(): void {
+  this.registerPresenceHandlers();
+  this.registerRideRequestHandlers();
+}
+
+private registerPresenceHandlers(): void {
+  this.hubConnection.on('DriverOnline', (data) => {
+    this.addDriverMarker(data.driverId, data.latitude, data.longitude);
+    if (this.selectedPickup && this.selectedDrop) this.findDrivers();
+    this.cdr.detectChanges();
+  });
+
+  this.hubConnection.on('LocationUpdated', (data) => {
+    this.updateDriverMarker(data.driverId, data.latitude, data.longitude);
+    const existing = this.nearbyDrivers.find((d) => d.connectionId === data.driverId);
+    if (existing && this.selectedPickup) {
+      existing.latitude = data.latitude;
+      existing.longitude = data.longitude;
+      existing.distanceKm = calculateDistance(
+        this.selectedPickup.lat,
+        this.selectedPickup.lng,
+        data.latitude,
+        data.longitude,
+      );
+    }
+    this.cdr.detectChanges();
+  });
+
+  this.hubConnection.on('DriverOffline', (data) => {
+    this.removeDriverMarker(data.driverId);
+    this.nearbyDrivers = this.nearbyDrivers.filter((d) => d.connectionId !== data.driverId);
+    if (this.selectedDriver?.connectionId === data.driverId) this.selectedDriver = null;
+    this.cdr.detectChanges();
+  });
+}
+
+private registerRideRequestHandlers(): void {
+  this.hubConnection.on('RequestSent', () => {
+    this.requestSent = true;
+    this.cdr.detectChanges();
+  });
+
+  this.hubConnection.on('RequestFailed', (data) => {
+    this.requestError = data.message;
+    this.clearPendingDriver();
+    this.cdr.detectChanges();
+  });
+
+  this.hubConnection.on('RideAccepted', (data) => {
+    this.requestSent = false;
+    this.rideAccepted = true;
+    this.rideRejected = false;
+    this.rideTimeout = false;
+    this.acceptedDriver = data;
+    this.passengerPin = this.authService.getUserPin();
+    this.requestingDriverIds.clear();
+    this.pendingDriverId = null;
+    this.drawDriverToPassengerRoute(data.driverLat, data.driverLng);
+    this.cdr.detectChanges();
+  });
+
+  this.hubConnection.on('RideRejected', () => {
+    this.requestSent = false;
+    this.rideRejected = true;
+    this.rideAccepted = false;
+    this.clearPendingDriver();
+    this.cdr.detectChanges();
+  });
+
+  this.hubConnection.on('RequestTimeout', () => {
+    this.requestSent = false;
+    this.rideTimeout = true;
+    this.clearPendingDriver();
+    this.cdr.detectChanges();
+  });
+}
+
+private clearPendingDriver(): void {
+  if (this.pendingDriverId) {
+    this.requestingDriverIds.delete(this.pendingDriverId);
+    this.pendingDriverId = null;
   }
- 
+}
+
   private fetchExistingDrivers(): void {
     this.http.get<any[]>(API.drivers.all).subscribe({
       next: (drivers) => {
