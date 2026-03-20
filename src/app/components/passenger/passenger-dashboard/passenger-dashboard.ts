@@ -147,6 +147,15 @@ export class PassengerDashboard implements AfterViewInit, AfterViewChecked, OnDe
         this.cdr.detectChanges();
       }),
 
+      this.signalRService.seatsUpdated$.subscribe((data) => {
+         const driver = this.nearbyDrivers.find(driver => driver.connectionId === data.driverId);
+           if (driver) {
+                driver.availableSeats = data.availableSeats;
+            }
+          this.nearbyDrivers = this.nearbyDrivers.filter(driver => driver.availableSeats > 0);
+          this.cdr.detectChanges();
+}),
+
       this.signalRService.locationUpdated$.subscribe((data) => {
         this.mapService.updateDriverMarker(data.driverId, data.latitude, data.longitude);
         if (this.rideAccepted && this.pinConfirmed) {
@@ -379,23 +388,23 @@ export class PassengerDashboard implements AfterViewInit, AfterViewChecked, OnDe
   }
 
   private findDrivers(): void {
-    if (!this.selectedPickup) return;
-    this.isSearching = true;
-    this.cdr.detectChanges();
-    this.http
-      .get<NearbyDriver[]>(API.drivers.nearby(this.selectedPickup.lat, this.selectedPickup.lng))
-      .subscribe({
-        next: (drivers) => {
-          this.nearbyDrivers = drivers;
-          this.isSearching = false;
-          this.cdr.detectChanges();
-        },
-        error: () => {
-          this.isSearching = false;
-          this.cdr.detectChanges();
-        },
-      });
-  }
+  if (!this.selectedPickup) return;
+  this.isSearching = true;
+  this.cdr.detectChanges();
+  this.http
+    .get<NearbyDriver[]>(API.drivers.nearby(this.selectedPickup.lat, this.selectedPickup.lng))
+    .subscribe({
+      next: (drivers) => {
+        this.nearbyDrivers = drivers.filter(d => d.availableSeats > 0);  // ← sirf ye change
+        this.isSearching = false;
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.isSearching = false;
+        this.cdr.detectChanges();
+      },
+    });
+}
 
   public setActiveInput(type: 'pickup' | 'drop'): void {
     this.activeInput = type;
