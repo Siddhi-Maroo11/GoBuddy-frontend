@@ -76,7 +76,6 @@ export class PassengerDashboard implements AfterViewInit, AfterViewChecked, OnDe
   private subs: Subscription[] = [];
   private pickupDebounce: any;
   private dropDebounce: any;
-  private cancelMessageTimer: any;
 
   constructor(
     private readonly authService: AuthService,
@@ -93,7 +92,6 @@ export class PassengerDashboard implements AfterViewInit, AfterViewChecked, OnDe
     this.mapService.initMap('passenger-map', DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM);
     this.subscribeToMapEvents();
     this.connectSignalR();
-    this.showCurrentLocationDot(); 
   }
 
   public ngAfterViewChecked(): void {
@@ -109,7 +107,6 @@ export class PassengerDashboard implements AfterViewInit, AfterViewChecked, OnDe
     this.signalRService.disconnect();
     clearTimeout(this.pickupDebounce);
     clearTimeout(this.dropDebounce);
-    clearTimeout(this.cancelMessageTimer);
   }
 
   private subscribeToMapEvents(): void {
@@ -146,15 +143,6 @@ export class PassengerDashboard implements AfterViewInit, AfterViewChecked, OnDe
         if (this.selectedPickup && this.selectedDrop) this.findDrivers();
         this.cdr.detectChanges();
       }),
-
-      this.signalRService.seatsUpdated$.subscribe((data) => {
-         const driver = this.nearbyDrivers.find(driver => driver.connectionId === data.driverId);
-           if (driver) {
-                driver.availableSeats = data.availableSeats;
-            }
-          this.nearbyDrivers = this.nearbyDrivers.filter(driver => driver.availableSeats > 0);
-          this.cdr.detectChanges();
-}),
 
       this.signalRService.locationUpdated$.subscribe((data) => {
         this.mapService.updateDriverMarker(data.driverId, data.latitude, data.longitude);
@@ -245,12 +233,6 @@ export class PassengerDashboard implements AfterViewInit, AfterViewChecked, OnDe
         this.requestError = data.message;
         if (this.selectedPickup) this.findDrivers();
         this.cdr.detectChanges();
-
-        clearTimeout(this.cancelMessageTimer);
-        this.cancelMessageTimer = setTimeout(() => {
-          this.requestError = null;
-          this.cdr.detectChanges();
-        }, 3000);
       }),
 
       this.signalRService.cancelError$.subscribe((data) => {
@@ -388,23 +370,23 @@ export class PassengerDashboard implements AfterViewInit, AfterViewChecked, OnDe
   }
 
   private findDrivers(): void {
-  if (!this.selectedPickup) return;
-  this.isSearching = true;
-  this.cdr.detectChanges();
-  this.http
-    .get<NearbyDriver[]>(API.drivers.nearby(this.selectedPickup.lat, this.selectedPickup.lng))
-    .subscribe({
-      next: (drivers) => {
-        this.nearbyDrivers = drivers.filter(d => d.availableSeats > 0);  // ← sirf ye change
-        this.isSearching = false;
-        this.cdr.detectChanges();
-      },
-      error: () => {
-        this.isSearching = false;
-        this.cdr.detectChanges();
-      },
-    });
-}
+    if (!this.selectedPickup) return;
+    this.isSearching = true;
+    this.cdr.detectChanges();
+    this.http
+      .get<NearbyDriver[]>(API.drivers.nearby(this.selectedPickup.lat, this.selectedPickup.lng))
+      .subscribe({
+        next: (drivers) => {
+          this.nearbyDrivers = drivers;
+          this.isSearching = false;
+          this.cdr.detectChanges();
+        },
+        error: () => {
+          this.isSearching = false;
+          this.cdr.detectChanges();
+        },
+      });
+  }
 
   public setActiveInput(type: 'pickup' | 'drop'): void {
     this.activeInput = type;
@@ -457,20 +439,6 @@ export class PassengerDashboard implements AfterViewInit, AfterViewChecked, OnDe
       { enableHighAccuracy: true },
     );
   }
-
-  private showCurrentLocationDot(): void {
-  if (!navigator.geolocation) return;
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      const { latitude: lat, longitude: lng } = pos.coords;
-      this.mapService.placePickupMarker(lat, lng);
-      this.mapService.setView(lat, lng, 14);
-      this.cdr.detectChanges();
-    },
-    (err) => console.error(err),
-    { enableHighAccuracy: true },
-  );
-}
 
   public selectDriver(driver: NearbyDriver): void {
     this.selectedDriver = driver;
