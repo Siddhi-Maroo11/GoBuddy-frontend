@@ -17,9 +17,9 @@
         />
         @if (locationSuggestions.length > 0) {
           <div class="suggestions">
-            @for (s of locationSuggestions; track s.lon) {
+            @for (suggestion of locationSuggestions; track suggestion.lon) {
               <div class="suggestion-item" (click)="selectManualLocation(s)">
-                {{ s.display_name | slice: 0 : 55 }}...
+                {{ suggestion.display_name | slice: 0 : 55 }}...
               </div>
             }
           </div>
