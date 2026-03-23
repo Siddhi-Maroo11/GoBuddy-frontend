@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import * as L from 'leaflet';
+import * as Leaflet from 'leaflet';
 import { API, DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM } from '../constants/api.constants';
 import { SelectedLocation } from '../models/location.model';
 import { createPickupIcon, createDropIcon, createSelfDriverIcon } from '../utils/map.utils';
@@ -17,29 +17,29 @@ export interface MarkerDragEvent {
  
 @Injectable({ providedIn: 'root' })
 export class PassengerMapService {
-  private map!: L.Map;
-  private pickupMarker: L.Marker | null = null;
-  private dropMarker: L.Marker | null = null;
-  private passengerMarker: L.Marker | null = null;
-  private driverMarkers: Map<string, L.Marker> = new Map();
+  private map!: Leaflet.Map;
+  private pickupMarker: Leaflet.Marker | null = null;
+  private dropMarker: Leaflet.Marker | null = null;
+  private passengerMarker: Leaflet.Marker | null = null;
+  private driverMarkers: Map<string, Leaflet.Marker> = new Map();
   private acceptedDriverId: string | null = null;
-  private viaMarker: L.Marker | null = null;
+  private viaMarker: Leaflet.Marker | null = null;
  
-  private routeLayer: L.GeoJSON | null = null;
- 
-  private driverRouteLayer: L.Polyline | null = null;
+  private routeLayer: Leaflet.GeoJSON | null = null;
+ eaflet
+  private driverRouteLayer: Leaflet.Polyline | null = null;
   private driverRouteCoords: [number, number][] = [];
  
   public mapClick$ = new Subject<MapClickEvent>();
   public markerDrag$ = new Subject<MarkerDragEvent>();
  
   public initMap(elementId: string, center: [number, number], zoom: number): void {
-    this.map = L.map(elementId, { zoomControl: false }).setView(center, zoom);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    this.map = Leaflet.map(elementId, { zoomControl: false }).setView(center, zoom);
+    Leaflet.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors',
     }).addTo(this.map);
-    L.control.zoom({ position: 'bottomright' }).addTo(this.map);
-    this.map.on('click', (e: L.LeafletMouseEvent) =>
+    Leaflet.control.zoom({ position: 'bottomright' }).addTo(this.map);
+    this.map.on('click', (e: Leaflet.LeafletMouseEvent) =>
       this.mapClick$.next({ lat: e.latlng.lat, lng: e.latlng.lng }),
     );
     setTimeout(() => this.map.invalidateSize(), 0);
@@ -68,29 +68,29 @@ export class PassengerMapService {
  
   public placePickupMarker(lat: number, lng: number): void {
     if (this.pickupMarker) this.map.removeLayer(this.pickupMarker);
-    this.pickupMarker = L.marker([lat, lng], { icon: createPickupIcon(), draggable: true }).addTo(
+    this.pickupMarker = Leaflet.marker([lat, lng], { icon: createPickupIcon(), draggable: true }).addTo(
       this.map,
     );
     this.pickupMarker.on('dragend', (e) => {
-      const p = (e.target as L.Marker).getLatLng();
+      const p = (e.target as Leaflet.Marker).getLatLng();
       this.markerDrag$.next({ lat: p.lat, lng: p.lng, type: 'pickup' });
     });
   }
  
   public placeDropMarker(lat: number, lng: number): void {
     if (this.dropMarker) this.map.removeLayer(this.dropMarker);
-    this.dropMarker = L.marker([lat, lng], { icon: createDropIcon(), draggable: true }).addTo(
+    this.dropMarker = Leaflet.marker([lat, lng], { icon: createDropIcon(), draggable: true }).addTo(
       this.map,
     );
     this.dropMarker.on('dragend', (e) => {
-      const p = (e.target as L.Marker).getLatLng();
+      const p = (e.target as Leaflet.Marker).getLatLng();
       this.markerDrag$.next({ lat: p.lat, lng: p.lng, type: 'drop' });
     });
   }
  
   public placePassengerMarker(lat: number, lng: number): void {
     if (this.passengerMarker) this.passengerMarker.setLatLng([lat, lng]);
-    else this.passengerMarker = L.marker([lat, lng], { icon: createPickupIcon() }).addTo(this.map);
+    else this.passengerMarker = Leaflet.marker([lat, lng], { icon: createPickupIcon() }).addTo(this.map);
   }
  
   public removePassengerMarker(): void {
@@ -105,7 +105,7 @@ export class PassengerMapService {
       this.driverMarkers.get(driverId)!.setLatLng([lat, lng]);
       return;
     }
-    const marker = L.marker([lat, lng], { icon: createSelfDriverIcon() });
+    const marker = Leaflet.marker([lat, lng], { icon: createSelfDriverIcon() });
     if (!this.acceptedDriverId || this.acceptedDriverId === driverId) marker.addTo(this.map);
     this.driverMarkers.set(driverId, marker);
   }
@@ -139,7 +139,7 @@ export class PassengerMapService {
       const data = await res.json();
       if (!data.routes?.length) return 0;
       const distanceKm = Math.round((data.routes[0].distance / 1000) * 100) / 100;
-      this.routeLayer = L.geoJSON(data.routes[0].geometry, {
+      this.routeLayer = Leaflet.geoJSON(data.routes[0].geometry, {
         style: { color: '#4285F4', weight: 5, opacity: 0.9, lineCap: 'round', lineJoin: 'round' },
       }).addTo(this.map);
       setTimeout(() => {
@@ -156,11 +156,11 @@ export class PassengerMapService {
     }
   }
  
-  private nextDropMarker: L.Marker | null = null;
+  private nextDropMarker: Leaflet.Marker | null = null;
  
   public placeNextDropMarker(lat: number, lng: number, name: string): void {
     if (this.nextDropMarker) this.map.removeLayer(this.nextDropMarker);
-    this.nextDropMarker = L.marker([lat, lng], { icon: createDropIcon() })
+    this.nextDropMarker = Leaflet.marker([lat, lng], { icon: createDropIcon() })
       .addTo(this.map)
       .bindPopup(`Next drop: ${name}`);
   }
@@ -186,7 +186,7 @@ export class PassengerMapService {
       this.driverRouteCoords = route.geometry.coordinates.map(
         ([lng, lat]: [number, number]) => [lat, lng] as [number, number],
       );
-      this.driverRouteLayer = L.polyline(this.driverRouteCoords, {
+      this.driverRouteLayer = Leaflet.polyline(this.driverRouteCoords, {
         color: '#7c3aed',
         weight: 4,
         opacity: 0.8,
@@ -221,7 +221,7 @@ export class PassengerMapService {
       this.driverRouteCoords = data.routes[0].geometry.coordinates.map(
         ([lng, lat]: [number, number]) => [lat, lng] as [number, number],
       );
-      this.driverRouteLayer = L.polyline(this.driverRouteCoords, {
+      this.driverRouteLayer = Leaflet.polyline(this.driverRouteCoords, {
         color: '#4285F4',
         weight: 5,
         opacity: 0.9,
@@ -251,7 +251,7 @@ export class PassengerMapService {
       this.driverRouteCoords = data.routes[0].geometry.coordinates.map(
         ([lng, lat]: [number, number]) => [lat, lng] as [number, number],
       );
-      this.driverRouteLayer = L.polyline(this.driverRouteCoords, {
+      this.driverRouteLayer = Leaflet.polyline(this.driverRouteCoords, {
         color: '#7c3aed',
         weight: 4,
         opacity: 0.8,
@@ -325,7 +325,7 @@ export class PassengerMapService {
       this.driverRouteCoords = data.routes[0].geometry.coordinates.map(
         ([lng, lat]: [number, number]) => [lat, lng] as [number, number],
       );
-      this.driverRouteLayer = L.polyline(this.driverRouteCoords, {
+      this.driverRouteLayer = Leaflet.polyline(this.driverRouteCoords, {
         color: '#4285F4',
         weight: 5,
         opacity: 0.9,
@@ -356,7 +356,7 @@ export class PassengerMapService {
       this.viaMarker = null;
     }
  
-    this.viaMarker = L.marker([viaLat, viaLng], { icon: createPickupIcon() })
+    this.viaMarker = Leaflet.marker([viaLat, viaLng], { icon: createPickupIcon() })
       .addTo(this.map)
       .bindPopup(`Pickup: ${viaName}`);
  
@@ -367,7 +367,7 @@ export class PassengerMapService {
       this.driverRouteCoords = data.routes[0].geometry.coordinates.map(
         ([lng, lat]: [number, number]) => [lat, lng] as [number, number],
       );
-      this.driverRouteLayer = L.polyline(this.driverRouteCoords, {
+      this.driverRouteLayer = Leaflet.polyline(this.driverRouteCoords, {
         color: '#4285F4',
         weight: 5,
         opacity: 0.9,
