@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import * as L from 'leaflet';
+import * as Leaflet from 'leaflet';
 import { Subject } from 'rxjs';
 import { API } from '../constants/api.constants';
 import { createPickupIcon } from '../utils/map.utils';
@@ -8,24 +8,24 @@ export interface MapClickEvent {
   lat: number;
   lng: number;
 }
-
+eaflet
 @Injectable({ providedIn: 'root' })
 export class DriverMapService {
-  private map!: L.Map;
-  private driverMarker!: L.Marker;
+  private map!: Leaflet.Map;
+  private driverMarker!: Leaflet.Marker;
   private routeCoords: [number, number][] = [];
-  private routeLayer: L.Polyline | null = null;
-  private pickupMarker: L.Marker | null = null;
+  private routeLayer: Leaflet.Polyline | null = null;
+  private pickupMarker: Leaflet.Marker | null = null;
 
   public mapClick$ = new Subject<MapClickEvent>();
 
   public initMap(elementId: string, center: [number, number], zoom: number): void {
-    this.map = L.map(elementId, { zoomControl: false }).setView(center, zoom);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    this.map = Leaflet.map(elementId, { zoomControl: false }).setView(center, zoom);
+    Leaflet.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors',
     }).addTo(this.map);
-    L.control.zoom({ position: 'bottomright' }).addTo(this.map);
-    this.map.on('click', (e: L.LeafletMouseEvent) => {
+    Leaflet.control.zoom({ position: 'bottomright' }).addTo(this.map);
+    this.map.on('click', (e: Leaflet.LeafletMouseEvent) => {
       this.mapClick$.next({ lat: e.latlng.lat, lng: e.latlng.lng });
     });
     setTimeout(() => this.map.invalidateSize(), 0);
@@ -33,7 +33,7 @@ export class DriverMapService {
 
   public placeDriverMarker(lat: number, lng: number): void {
     if (this.driverMarker) this.map.removeLayer(this.driverMarker);
-    const icon = L.divIcon({
+    const icon = Leaflet.divIcon({
       className: '',
       html: `<div style="position:relative;width:40px;height:40px;">
         <div style="position:absolute;inset:0;border-radius:50%;background:rgba(124,58,237,0.15);"></div>
@@ -50,7 +50,7 @@ export class DriverMapService {
       iconSize: [40, 40],
       iconAnchor: [20, 20],
     });
-    this.driverMarker = L.marker([lat, lng], { icon }).addTo(this.map);
+    this.driverMarker = Leaflet.marker([lat, lng], { icon }).addTo(this.map);
   }
 
   public removeDriverMarker(): void {
@@ -90,7 +90,7 @@ export class DriverMapService {
 
     this.routeCoords = rawCoords.map(([lng, lat]) => [lat, lng] as [number, number]);
 
-    this.routeLayer = L.polyline(this.routeCoords, {
+    this.routeLayer = Leaflet.polyline(this.routeCoords, {
       color,
       weight: 5,
       opacity: 0.9,
@@ -99,7 +99,7 @@ export class DriverMapService {
 
     if (pickupLabel && pickupLat !== undefined && pickupLng !== undefined) {
       if (this.pickupMarker) this.map.removeLayer(this.pickupMarker);
-      this.pickupMarker = L.marker([pickupLat, pickupLng], { icon: createPickupIcon() })
+      this.pickupMarker = Leaflet.marker([pickupLat, pickupLng], { icon: createPickupIcon() })
         .addTo(this.map)
         .bindPopup(pickupLabel);
     }
