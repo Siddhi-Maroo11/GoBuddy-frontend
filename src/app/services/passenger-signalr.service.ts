@@ -40,6 +40,7 @@ export class PassengerSignalRService {
   public rideCancelled$ = new Subject<RideCancelledEvent>();
   public cancelError$ = new Subject<any>();
   public rideCompleted$ = new Subject<any>();
+  public seatsUpdated$ = new Subject<{ driverId: string; availableSeats: number }>();
 
   public connect(): Promise<void> {
     const token = localStorage.getItem('token') ?? '';
@@ -82,5 +83,6 @@ export class PassengerSignalRService {
     this.hubConnection.on('RideCancelled', (data) => this.rideCancelled$.next(data));
     this.hubConnection.on('CancelError', (data) => this.cancelError$.next(data));
     this.hubConnection.on('RideCompleted', (data) => this.rideCompleted$.next(data));
+    this.hubConnection.on('SeatsUpdated', (data) => this.seatsUpdated$.next(data));
   }
 }

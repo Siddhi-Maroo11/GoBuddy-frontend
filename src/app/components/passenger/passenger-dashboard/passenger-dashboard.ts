@@ -264,6 +264,15 @@ export class PassengerDashboard implements AfterViewInit, AfterViewChecked, OnDe
         this.mapService.clearRoutes();
         this.cdr.detectChanges();
       }),
+
+      this.signalRService.seatsUpdated$.subscribe((data) => {
+  const driver = this.nearbyDrivers.find(d => d.connectionId === data.driverId);
+  if (driver) {
+    driver.availableSeats = data.availableSeats;
+  }
+  this.nearbyDrivers = this.nearbyDrivers.filter(d => d.availableSeats > 0);
+  this.cdr.detectChanges();
+}),
     );
   }
 
@@ -386,7 +395,7 @@ export class PassengerDashboard implements AfterViewInit, AfterViewChecked, OnDe
       .get<NearbyDriver[]>(API.drivers.nearby(this.selectedPickup.lat, this.selectedPickup.lng))
       .subscribe({
         next: (drivers) => {
-          this.nearbyDrivers = drivers;
+          this.nearbyDrivers = drivers.filter(driver => driver.availableSeats > 0);
           this.isSearching = false;
           this.cdr.detectChanges();
         },
