@@ -8,7 +8,7 @@ export interface MapClickEvent {
   lat: number;
   lng: number;
 }
-eaflet
+
 @Injectable({ providedIn: 'root' })
 export class DriverMapService {
   private map!: Leaflet.Map;
