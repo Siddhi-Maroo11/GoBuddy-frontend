@@ -1,0 +1,9 @@
+export const SIMULATION_DURATION_MS = 25000;
+export const REQUEST_TIMEOUT_SECONDS = 20;
+export const NOTIFICATION_DISMISS_MS = 4000;
+export const LOCATION_DEBOUNCE_MS = 400;
+export const PIN_LENGTH = 4;
+export const MANUAL_LOCATION_ZOOM = 15;
+export const GEO_TIMEOUT_MS = 10000;
+export const GEO_MAX_AGE_MS = 5000;
+export const MIN_SEARCH_QUERY_LENGTH = 2;

@@ -1,1 +1,201 @@
-<p>driver-dashboard works!</p>
+<div class="dashboard">
+  <nav class="navbar">
+    <div class="brand">
+      <span class="brand-dot"></span>
+      GoBuddy
+    </div>
+
+    @if (!isOnline) {
+      <div class="nav-search">
+        <span class="field-dot"></span>
+        <input
+          type="text"
+          class="search-input"
+          placeholder="Set your location manually..."
+          [(ngModel)]="locationQuery"
+          (input)="onLocationInput()"
+        />
+        @if (locationSuggestions.length > 0) {
+          <div class="suggestions">
+            @for (suggestion of locationSuggestions; track suggestion.lon) {
+              <div class="suggestion-item" (click)="selectManualLocation(s)">
+                {{ suggestion.display_name | slice: 0 : 55 }}...
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+
+    <div class="nav-right">
+      <div class="profile-chip">
+        <div class="profile-avatar">{{ driverName.charAt(0).toUpperCase() }}</div>
+        <span class="profile-name">{{ driverName }}</span>
+      </div>
+
+      <div class="toggle-wrap">
+        <span class="toggle-label">{{ isOnline ? 'Online' : 'Offline' }}</span>
+        <button
+          class="toggle-switch"
+          [class.active]="isOnline"
+          [disabled]="isConnecting"
+          (click)="toggleOnline()"
+        >
+          <span class="toggle-thumb"></span>
+        </button>
+      </div>
+
+      <button class="logout-btn" [disabled]="!!confirmedRide" (click)="logout()">Logout</button>
+    </div>
+  </nav>
+
+  <div id="driver-map" class="map"></div>
+
+  @if (locationError) {
+    <div class="toast toast-error">{{ locationError }}</div>
+  }
+
+  @if (incomingRequest) {
+    <div class="request-notification">
+      <div class="notif-header">
+        <span class="notif-title">New Ride Request</span>
+        <div class="timer-circle" [style.border-color]="getTimerColor()">
+          <span [style.color]="getTimerColor()">{{ timeLeft }}</span>
+        </div>
+      </div>
+      <div class="notif-body">
+        <div class="notif-row">
+          <span class="notif-label">Passenger</span>
+          <span class="notif-value">{{ incomingRequest.passengerName }}</span>
+        </div>
+        <div class="notif-row">
+          <span class="notif-label">Pickup</span>
+          <span class="notif-value">{{ incomingRequest.pickupName }}</span>
+        </div>
+        <div class="notif-row">
+          <span class="notif-label">Drop</span>
+          <span class="notif-value">{{ incomingRequest.dropName }}</span>
+        </div>
+      </div>
+      <div class="notif-actions">
+        <button class="notif-reject" (click)="rejectRequest()">Decline</button>
+        <button class="notif-accept" (click)="acceptRequest()">Accept</button>
+      </div>
+    </div>
+  }
+
+  @if (confirmedRide && !incomingRequest) {
+    <div class="confirmed-card">
+      <div class="confirmed-header">
+        <span class="confirmed-title">
+          @if (arrivedAtDrop) { Ride Ended }
+          @else if (pinConfirmed) { Ride In Progress }
+          @else { Ride Confirmed }
+        </span>
+        <span class="confirmed-badge"
+          [class.in-progress]="pinConfirmed && !arrivedAtDrop"
+          [class.ended]="arrivedAtDrop">
+          @if (arrivedAtDrop) { At Destination }
+          @else if (pinConfirmed) { PIN Verified }
+          @else { Awaiting PIN }
+        </span>
+      </div>
+
+      <div class="confirmed-body">
+        <div class="confirmed-row">
+          <span class="confirmed-label">Passenger</span>
+          <span class="confirmed-value">{{ confirmedRide.passengerName }}</span>
+        </div>
+        <div class="confirmed-row">
+          <span class="confirmed-label">Pickup</span>
+          <span class="confirmed-value">{{ confirmedRide.pickupName }}</span>
+        </div>
+        <div class="confirmed-row">
+          <span class="confirmed-label">Drop</span>
+          <span class="confirmed-value">{{ confirmedRide.dropName }}</span>
+        </div>
+      </div>
+
+      @if (!arrivedAtPickup && !pinConfirmed && !arrivedAtDrop) {
+        <button
+          class="sim-btn"
+          [class.running]="simulationRunning"
+          [disabled]="simulationRunning"
+          (click)="toggleSimulation()">
+          {{ simulationRunning ? 'Ride In Progress...' : 'Start Ride' }}
+        </button>
+      }
+
+      @if (arrivedAtPickup && !pinConfirmed) {
+        <div class="arrived-notice">You have arrived at pickup</div>
+        <div class="pin-section">
+          <input
+            type="text"
+            class="pin-input"
+            placeholder="Enter passenger PIN"
+            maxlength="4"
+            [(ngModel)]="enteredPin"
+            (keyup.enter)="submitPin()"
+          />
+          <button class="pin-submit-btn" (click)="submitPin()">Confirm</button>
+        </div>
+        @if (pinError) {
+          <div class="pin-error">{{ pinError }}</div>
+        }
+      }
+
+      @if (pinConfirmed && !arrivedAtDrop) {
+        <button
+          class="sim-btn"
+          [class.running]="simulationRunning"
+          [disabled]="simulationRunning"
+          (click)="toggleSimulation()">
+          {{ simulationRunning ? 'Heading to Drop...' : 'Start Drop' }}
+        </button>
+      }
+
+      @if (arrivedAtDrop) {
+        <div class="arrived-notice drop">You have arrived at destination</div>
+
+        @if (ridePaymentData) {
+          <div class="payment-summary">
+            <div class="payment-row">
+              <span>Passenger</span>
+              <span>{{ ridePaymentData.passengerName }}</span>
+            </div>
+            <div class="payment-row">
+              <span>Distance</span>
+              <span>{{ ridePaymentData.totalKm }} km</span>
+            </div>
+            <div class="payment-row">
+              <span>Rate</span>
+              <span>₹{{ ridePaymentData.ratePerKm }}/km</span>
+            </div>
+            <div class="payment-row total">
+              <span>Total</span>
+              <span>₹{{ ridePaymentData.totalCost }}</span>
+            </div>
+          </div>
+        }
+
+        <button class="end-ride-btn" (click)="endRide()">End Ride</button>
+      }
+
+      @if (cancelError) {
+        <div class="cancel-error">{{ cancelError }}</div>
+      }
+
+      @if (!pinConfirmed && !arrivedAtDrop) {
+        <button class="cancel-ride-btn" (click)="cancelRide()">Cancel Ride</button>
+      }
+    </div>
+  }
+
+  <div class="bottom-panel">
+    <div class="panel-info">
+      <span class="panel-label">
+        {{ isOnline ? 'You are accepting rides' : 'Go online to accept rides' }}
+      </span>
+    </div>
+  </div>
+</div>

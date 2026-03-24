@@ -26,7 +26,6 @@ export class PassengerMapService {
   private viaMarker: Leaflet.Marker | null = null;
  
   private routeLayer: Leaflet.GeoJSON | null = null;
- eaflet
   private driverRouteLayer: Leaflet.Polyline | null = null;
   private driverRouteCoords: [number, number][] = [];
  
