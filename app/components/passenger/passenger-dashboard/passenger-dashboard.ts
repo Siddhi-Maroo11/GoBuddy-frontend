@@ -308,8 +308,8 @@ export class PassengerDashboard implements AfterViewInit, AfterViewChecked, OnDe
   private fetchExistingDrivers(): void {
     this.http.get<any[]>(API.drivers.all).subscribe({
       next: (drivers) => {
-        drivers.forEach((d) =>
-          this.mapService.addDriverMarker(d.connectionId, d.latitude, d.longitude),
+        drivers.forEach((driver) =>
+          this.mapService.addDriverMarker(driver.connectionId, driver.latitude, driver.longitude),
         );
         this.cdr.detectChanges();
       },
