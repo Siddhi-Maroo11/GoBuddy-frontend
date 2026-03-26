@@ -25,6 +25,8 @@ import { NearbyDriver } from '../../../models/driver.model';
 import { LocationSuggestion, SelectedLocation } from '../../../models/location.model';
 import { appendCityIfNeeded } from '../../../utils/map.utils';
 
+const PASSENGER_SESSION_KEY = 'passenger_ride_state';
+
 @Component({
   selector: 'app-passenger-dashboard',
   standalone: true,
@@ -39,8 +41,10 @@ export class PassengerDashboard implements AfterViewInit, AfterViewChecked, OnDe
   public dropSuggestions: LocationSuggestion[] = [];
   public selectedPickup: SelectedLocation | null = null;
   public selectedDrop: SelectedLocation | null = null;
+  public activeInput: 'pickup' | 'drop' | null = null;
+  public nextDropInfo: string = '';
   public pickupToDropRouteKm: number = 0;
-
+  
   public requestError: string | null = null;
   public rideAccepted: boolean = false;
   public rideRejected: boolean = false;
@@ -62,21 +66,24 @@ export class PassengerDashboard implements AfterViewInit, AfterViewChecked, OnDe
     ratePerKm: number;
     totalCost: number;
   } | null = null;
-
-  public activeInput: 'pickup' | 'drop' | null = null;
+  
+  public driverPickingUpOtherMsg: string | null = null;
+  public newPassengerJoinedMsg: string | null = null;
   public nearbyDrivers: NearbyDriver[] = [];
   public selectedDriver: NearbyDriver | null = null;
   public isSearching: boolean = false;
-
   public showHistory: boolean = false;
   public historyLoading: boolean = false;
   public rideHistory: any[] = [];
+  public driverEta: string = '';
+  public driverDistanceKm: number = 0;
 
+  private acceptedDriverConnectionId: string | null = null;
   private lastSidebarState: boolean = false;
   private subs: Subscription[] = [];
   private pickupDebounce: any;
   private dropDebounce: any;
-  private cancelMessageTimer: any;
+  private locationUpdateDebounce: any;
 
   constructor(
     private readonly authService: AuthService,
@@ -85,19 +92,89 @@ export class PassengerDashboard implements AfterViewInit, AfterViewChecked, OnDe
     private readonly cdr: ChangeDetectorRef,
     private readonly signalRService: PassengerSignalRService,
     private readonly mapService: PassengerMapService,
-  ) { }
+  ) {}
 
+  private saveSession(): void {
+    try {
+      sessionStorage.setItem(
+        PASSENGER_SESSION_KEY,
+        JSON.stringify({
+          selectedPickup: this.selectedPickup,
+          selectedDrop: this.selectedDrop,
+          pickupQuery: this.pickupQuery,
+          dropQuery: this.dropQuery,
+          pickupToDropRouteKm: this.pickupToDropRouteKm,
+          rideAccepted: this.rideAccepted,
+          activeRideId: this.activeRideId,
+          acceptedDriver: this.acceptedDriver,
+          pinConfirmed: this.pinConfirmed,
+          driverArrived: this.driverArrived,
+          rideCompleted: this.rideCompleted,
+          paymentData: this.paymentData,
+        }),
+      );
+    } catch {}
+  }
+
+  private restoreSession(): void {
+    try {
+      const raw = sessionStorage.getItem(PASSENGER_SESSION_KEY);
+      if (!raw) return;
+      const session = JSON.parse(raw);
+      this.selectedPickup = session.selectedPickup ?? null;
+      this.selectedDrop = session.sessionelectedDrop ?? null;
+      this.pickupQuery = session.pickupQuery ?? '';
+      this.dropQuery = session.dropQuery ?? '';
+      this.pickupToDropRouteKm = session.pickupToDropRouteKm ?? 0;
+      this.rideAccepted = session.rideAccepted ?? false;
+      this.activeRideId = session.activeRideId ?? null;
+      this.acceptedDriver = session.acceptedDriver ?? null;
+      this.pinConfirmed = session.pinConfirmed ?? false;
+      this.driverArrived = session.driverArrived ?? false;
+      this.rideCompleted = session.rideCompleted ?? false;
+      this.paymentData = session.paymentData ?? null;
+    } catch {
+      sessionStorage.removeItem(PASSENGER_SESSION_KEY);
+    }
+  }
+
+  private clearSession(): void {
+    sessionStorage.removeItem(PASSENGER_SESSION_KEY);
+  }
+  
   public ngAfterViewInit(): void {
     this.passengerName = this.authService.getUserName() ?? 'Passenger';
     this.passengerPin = this.authService.getUserPin();
     this.mapService.initMap('passenger-map', DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM);
+
+    this.restoreSession();
+    if (this.selectedPickup) {
+      this.mapService.placePickupMarker(this.selectedPickup.lat, this.selectedPickup.lng);
+    }
+    if (this.selectedDrop) {
+      this.mapService.placeDropMarker(this.selectedDrop.lat, this.selectedDrop.lng);
+    }
+    if (this.selectedPickup && this.selectedDrop) {
+      this.mapService.drawPickupDropRoute(this.selectedPickup, this.selectedDrop);
+    }
+    if (this.rideAccepted && this.acceptedDriver && this.selectedPickup) {
+      if (this.pinConfirmed && this.selectedDrop) {
+        this.mapService.drawDropRoute(this.selectedPickup, this.selectedDrop);
+      } else {
+        this.mapService.drawDriverRoute(
+          this.acceptedDriver.driverLat,
+          this.acceptedDriver.driverLng,
+          this.selectedPickup
+        );
+      }
+    }
+
     this.subscribeToMapEvents();
     this.connectSignalR();
-    this.showCurrentLocationDot(); 
   }
 
   public ngAfterViewChecked(): void {
-    const current: boolean = !!(this.selectedPickup && this.selectedDrop);
+    const current = !!(this.selectedPickup && this.selectedDrop);
     if (current !== this.lastSidebarState) {
       this.lastSidebarState = current;
       setTimeout(() => this.mapService.invalidateSize(), 310);
@@ -105,11 +182,11 @@ export class PassengerDashboard implements AfterViewInit, AfterViewChecked, OnDe
   }
 
   public ngOnDestroy(): void {
-    this.subs.forEach((s) => s.unsubscribe());
+    this.subs.forEach((sub) => sub.unsubscribe());
     this.signalRService.disconnect();
     clearTimeout(this.pickupDebounce);
     clearTimeout(this.dropDebounce);
-    clearTimeout(this.cancelMessageTimer);
+    clearTimeout(this.locationUpdateDebounce);
   }
 
   private subscribeToMapEvents(): void {
@@ -142,25 +219,33 @@ export class PassengerDashboard implements AfterViewInit, AfterViewChecked, OnDe
 
     this.subs.push(
       this.signalRService.driverOnline$.subscribe((data) => {
-        this.mapService.addDriverMarker(data.driverId, data.latitude, data.longitude);
+        if (!this.rideAccepted)
+          this.mapService.addDriverMarker(data.driverId, data.latitude, data.longitude);
         if (this.selectedPickup && this.selectedDrop) this.findDrivers();
         this.cdr.detectChanges();
       }),
 
       this.signalRService.locationUpdated$.subscribe((data) => {
-        this.mapService.updateDriverMarker(data.driverId, data.latitude, data.longitude);
-        if (this.rideAccepted && this.pinConfirmed) {
-          this.mapService.placePassengerMarker(data.latitude, data.longitude);
-        } else if (this.rideAccepted && !this.pinConfirmed) {
-          if (this.selectedPickup)
+        if (this.rideAccepted && data.driverId === this.acceptedDriverConnectionId) {
+          this.mapService.updateDriverMarker(data.driverId, data.latitude, data.longitude);
+          if (this.pinConfirmed) {
+            this.mapService.placePassengerMarker(data.latitude, data.longitude);
+          } else if (this.selectedPickup) {
             this.mapService.placePassengerMarker(this.selectedPickup.lat, this.selectedPickup.lng);
+          }
+        } else if (!this.rideAccepted) {
+          this.mapService.updateDriverMarker(data.driverId, data.latitude, data.longitude);
+          if (this.selectedPickup && this.selectedDrop) {
+            clearTimeout(this.locationUpdateDebounce);
+            this.locationUpdateDebounce = setTimeout(() => this.findDrivers(), 3000);
+          }
         }
         this.cdr.detectChanges();
       }),
 
       this.signalRService.driverOffline$.subscribe((data) => {
         this.mapService.removeDriverMarker(data.driverId);
-        this.nearbyDrivers = this.nearbyDrivers.filter((d) => d.connectionId !== data.driverId);
+        this.nearbyDrivers = this.nearbyDrivers.filter((driver) => driver.connectionId !== data.driverId);
         if (this.selectedDriver?.connectionId === data.driverId) this.selectedDriver = null;
         this.cdr.detectChanges();
       }),
@@ -172,6 +257,7 @@ export class PassengerDashboard implements AfterViewInit, AfterViewChecked, OnDe
 
       this.signalRService.requestFailed$.subscribe((data) => {
         this.requestError = data.message;
+        this.requestSent = false;
         if (this.pendingDriverId) {
           this.requestingDriverIds.delete(this.pendingDriverId);
           this.pendingDriverId = null;
@@ -189,10 +275,28 @@ export class PassengerDashboard implements AfterViewInit, AfterViewChecked, OnDe
         this.pinConfirmed = false;
         this.driverArrived = false;
         this.cancelError = null;
+        this.driverPickingUpOtherMsg = null;
+        this.newPassengerJoinedMsg = null;
         this.requestingDriverIds.clear();
         this.pendingDriverId = null;
-        if (this.selectedPickup)
-          this.mapService.drawDriverRoute(data.driverLat, data.driverLng, this.selectedPickup);
+        this.acceptedDriverConnectionId = data.driverConnectionId;
+
+        this.mapService.clearRoutes();
+        this.mapService.removePickupMarker();
+        this.mapService.showOnlyDriver(data.driverConnectionId);
+
+        if (this.selectedPickup) {
+          this.mapService
+            .drawDriverRoute(data.driverLat, data.driverLng, this.selectedPickup)
+            .then((routeInfo) => {
+              if (routeInfo) {
+                this.driverEta = routeInfo.eta;
+                this.driverDistanceKm = routeInfo.distanceKm;
+              }
+              this.cdr.detectChanges();
+            });
+        }
+        this.saveSession(); 
         this.cdr.detectChanges();
       }),
 
@@ -219,6 +323,8 @@ export class PassengerDashboard implements AfterViewInit, AfterViewChecked, OnDe
 
       this.signalRService.driverArrived$.subscribe(() => {
         this.driverArrived = true;
+        this.driverPickingUpOtherMsg = null;
+        this.saveSession(); 
         this.cdr.detectChanges();
       }),
 
@@ -226,22 +332,49 @@ export class PassengerDashboard implements AfterViewInit, AfterViewChecked, OnDe
         this.pinConfirmed = true;
         this.driverArrived = false;
         this.cancelError = null;
+        this.driverPickingUpOtherMsg = null;
         if (this.selectedPickup && this.selectedDrop)
           this.mapService.drawDropRoute(this.selectedPickup, this.selectedDrop);
+        this.saveSession(); 
+        this.cdr.detectChanges();
+      }),
+
+      this.signalRService.driverPickingUpOther$.subscribe((data) => {
+        this.driverPickingUpOtherMsg = data.message;
+        if (this.selectedPickup)
+          this.mapService.drawDriverRoute(data.driverLat, data.driverLng, this.selectedPickup);
+        this.cdr.detectChanges();
+      }),
+
+      this.signalRService.newPassengerJoined$.subscribe((data:any) => {
+        this.newPassengerJoinedMsg = data.message;
+
+        if (this.pinConfirmed && this.selectedDrop) {
+          this.mapService.drawRouteViaPickup(
+            data.driverLat, 
+            data.driverLng,
+            data.pickupLat,
+            data.pickupLng,
+            data.pickupName
+          );
+          this.mapService.placeNextDropMarker(data.pickupLat, data.pickupLng, data.pickupName);
+        }
+
+        setTimeout(() => {
+          this.newPassengerJoinedMsg = null;
+          this.cdr.detectChanges();
+        }, 5000);
         this.cdr.detectChanges();
       }),
 
       this.signalRService.rideCancelled$.subscribe((data) => {
+        this.mapService.restoreAllDrivers();
         this.resetRideState();
+        this.acceptedDriverConnectionId = null;
         this.requestError = data.message;
+        this.clearSession(); 
         if (this.selectedPickup) this.findDrivers();
         this.cdr.detectChanges();
-
-        clearTimeout(this.cancelMessageTimer);
-        this.cancelMessageTimer = setTimeout(() => {
-          this.requestError = null;
-          this.cdr.detectChanges();
-        }, 3000);
       }),
 
       this.signalRService.cancelError$.subscribe((data) => {
@@ -251,28 +384,59 @@ export class PassengerDashboard implements AfterViewInit, AfterViewChecked, OnDe
 
       this.signalRService.rideCompleted$.subscribe((data) => {
         if (data) {
+          const fareRatePerKm = this.acceptedDriver?.ratePerKm ?? data.ratePerKm;
+          const travelDistanceKm = this.pickupToDropRouteKm;
           this.paymentData = {
             driverName: data.driverName,
-            totalKm: data.totalKm,
-            ratePerKm: data.ratePerKm,
-            totalCost: data.totalCost,
+            totalKm: travelDistanceKm,
+            ratePerKm: fareRatePerKm,
+            totalCost: Math.round(travelDistanceKm * fareRatePerKm),
           };
         }
         this.rideAccepted = false;
         this.pinConfirmed = false;
         this.rideCompleted = true;
+        this.acceptedDriverConnectionId = null;
         this.mapService.clearRoutes();
+        this.saveSession(); 
         this.cdr.detectChanges();
       }),
 
-      this.signalRService.seatsUpdated$.subscribe((data) => {
-  const driver = this.nearbyDrivers.find(d => d.connectionId === data.driverId);
-  if (driver) {
-    driver.availableSeats = data.availableSeats;
-  }
-  this.nearbyDrivers = this.nearbyDrivers.filter(d => d.availableSeats > 0);
-  this.cdr.detectChanges();
-}),
+      this.signalRService.driverSeatsUpdated$.subscribe((data) => {
+        const driver = this.nearbyDrivers.find((x) => x.connectionId === data.driverId);
+        if (driver) {
+          driver.availableSeats = data.availableSeats;
+          this.cdr.detectChanges();
+        }
+        if (!driver && this.selectedPickup && this.selectedDrop) {
+          clearTimeout(this.locationUpdateDebounce);
+          this.locationUpdateDebounce = setTimeout(() => this.findDrivers(), 1000);
+        }
+      }),
+
+      this.signalRService.driverSeatsFull$.subscribe((data) => {
+        this.nearbyDrivers = this.nearbyDrivers.filter((d) => d.connectionId !== data.driverId);
+        this.cdr.detectChanges();
+      }),
+
+      this.signalRService.nextDropUpdate$.subscribe((data) => {
+        if (this.pinConfirmed) {
+          this.mapService.drawRouteToNextDrop(
+            data.driverLat,
+            data.driverLng,
+            data.nextDropLat,
+            data.nextDropLng,
+            data.nextDropName,
+          );
+          this.mapService.placeNextDropMarker(
+            data.nextDropLat,
+            data.nextDropLng,
+            data.nextDropName,
+          );
+          this.nextDropInfo = `${data.stopsRemaining} stop${data.stopsRemaining > 1 ? 's' : ''} remaining`;
+        }
+        this.cdr.detectChanges();
+      }),
     );
   }
 
@@ -281,6 +445,7 @@ export class PassengerDashboard implements AfterViewInit, AfterViewChecked, OnDe
     drop: SelectedLocation,
   ): Promise<void> {
     this.pickupToDropRouteKm = await this.mapService.drawPickupDropRoute(pickup, drop);
+    this.saveSession();
     this.cdr.detectChanges();
   }
 
@@ -291,6 +456,8 @@ export class PassengerDashboard implements AfterViewInit, AfterViewChecked, OnDe
     this.pinConfirmed = false;
     this.driverArrived = false;
     this.cancelError = null;
+    this.driverPickingUpOtherMsg = null;
+    this.newPassengerJoinedMsg = null;
     this.requestingDriverIds.clear();
     this.pendingDriverId = null;
     this.requestSent = false;
@@ -314,11 +481,15 @@ export class PassengerDashboard implements AfterViewInit, AfterViewChecked, OnDe
     this.paymentData = null;
     this.selectedDriver = null;
     this.activeInput = null;
+    this.acceptedDriverConnectionId = null;
+    this.driverEta = '';
+    this.driverDistanceKm = 0;
     this.mapService.resetMap();
   }
 
   public resetForNewRide(): void {
     this.fullReset();
+    this.clearSession();
     this.fetchExistingDrivers();
     this.cdr.detectChanges();
   }
@@ -326,29 +497,56 @@ export class PassengerDashboard implements AfterViewInit, AfterViewChecked, OnDe
   private fetchExistingDrivers(): void {
     this.http.get<any[]>(API.drivers.all).subscribe({
       next: (drivers) => {
-        drivers.forEach((d) =>
-          this.mapService.addDriverMarker(d.connectionId, d.latitude, d.longitude),
+        drivers.forEach((driver) =>
+          this.mapService.addDriverMarker(driver.connectionId, driver.latitude, driver.longitude),
         );
         this.cdr.detectChanges();
       },
     });
   }
 
+  private findDrivers(): void {
+    if (!this.selectedPickup || !this.selectedDrop) return;
+    this.isSearching = true;
+    this.cdr.detectChanges();
+    this.http
+      .get<NearbyDriver[]>(
+        API.drivers.nearby(
+          this.selectedPickup.lat, 
+          this.selectedPickup.lng, 
+          this.selectedDrop.lat, 
+          this.selectedDrop.lng
+        )
+      )
+      .subscribe({
+        next: (driveride) => {
+          this.nearbyDrivers = driveride;
+          this.isSearching = false;
+          this.cdr.detectChanges();
+        },
+        error: () => {
+          this.isSearching = false;
+          this.cdr.detectChanges();
+        },
+      });
+  }
+
   private searchLocation(query: string, type: 'pickup' | 'drop'): void {
-    const url = API.nominatim.search(appendCityIfNeeded(query, DEFAULT_CITY));
-    this.http.get<LocationSuggestion[]>(url).subscribe({
-      next: (results) => {
-        if (type === 'pickup') this.pickupSuggestions = results;
-        else this.dropSuggestions = results;
-        this.cdr.detectChanges();
-      },
-    });
+    this.http
+      .get<LocationSuggestion[]>(API.nominatim.search(appendCityIfNeeded(query, DEFAULT_CITY)))
+      .subscribe({
+        next: (ride) => {
+          if (type === 'pickup') this.pickupSuggestions = ride;
+          else this.dropSuggestions = ride;
+          this.cdr.detectChanges();
+        },
+      });
   }
 
   private reverseGeocode(lat: number, lng: number, type: 'pickup' | 'drop'): void {
     this.http.get<any>(API.nominatim.reverse(lat, lng)).subscribe({
-      next: (result) => {
-        const name = result.display_name?.split(',')[0] || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+      next: (reverse) => {
+        const name = reverse.display_name?.split(',')[0] || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
         if (type === 'pickup') {
           this.pickupQuery = name;
           this.selectedPickup!.name = name;
@@ -387,25 +585,6 @@ export class PassengerDashboard implements AfterViewInit, AfterViewChecked, OnDe
     }
   }
 
-  private findDrivers(): void {
-    if (!this.selectedPickup) return;
-    this.isSearching = true;
-    this.cdr.detectChanges();
-    this.http
-      .get<NearbyDriver[]>(API.drivers.nearby(this.selectedPickup.lat, this.selectedPickup.lng))
-      .subscribe({
-        next: (drivers) => {
-          this.nearbyDrivers = drivers.filter(driver => driver.availableSeats > 0);
-          this.isSearching = false;
-          this.cdr.detectChanges();
-        },
-        error: () => {
-          this.isSearching = false;
-          this.cdr.detectChanges();
-        },
-      });
-  }
-
   public setActiveInput(type: 'pickup' | 'drop'): void {
     this.activeInput = type;
   }
@@ -430,14 +609,14 @@ export class PassengerDashboard implements AfterViewInit, AfterViewChecked, OnDe
     this.dropDebounce = setTimeout(() => this.searchLocation(this.dropQuery, 'drop'), 400);
   }
 
-  public selectPickup(s: LocationSuggestion): void {
-    this.setPickup(parseFloat(s.lat), parseFloat(s.lon), s.display_name.split(',')[0]);
+  public selectPickup(selectPickup: LocationSuggestion): void {
+    this.setPickup(parseFloat(selectPickup.lat), parseFloat(selectPickup.lon), selectPickup.display_name.split(',')[0]);
     this.pickupSuggestions = [];
     this.checkAutoSearch();
   }
 
-  public selectDrop(s: LocationSuggestion): void {
-    this.setDrop(parseFloat(s.lat), parseFloat(s.lon), s.display_name.split(',')[0]);
+  public selectDrop(selectPickup: LocationSuggestion): void {
+    this.setDrop(parseFloat(selectPickup.lat), parseFloat(selectPickup.lon), selectPickup.display_name.split(',')[0]);
     this.dropSuggestions = [];
     this.checkAutoSearch();
   }
@@ -458,20 +637,6 @@ export class PassengerDashboard implements AfterViewInit, AfterViewChecked, OnDe
     );
   }
 
-  private showCurrentLocationDot(): void {
-  if (!navigator.geolocation) return;
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      const { latitude: lat, longitude: lng } = pos.coords;
-      this.mapService.placePickupMarker(lat, lng);
-      this.mapService.setView(lat, lng, 14);
-      this.cdr.detectChanges();
-    },
-    (err) => console.error(err),
-    { enableHighAccuracy: true },
-  );
-}
-
   public selectDriver(driver: NearbyDriver): void {
     this.selectedDriver = driver;
     this.mapService.setView(driver.latitude, driver.longitude, 15);
@@ -481,6 +646,7 @@ export class PassengerDashboard implements AfterViewInit, AfterViewChecked, OnDe
   public sendRideRequest(driver: NearbyDriver): void {
     if (!this.selectedPickup || !this.selectedDrop) return;
     if (this.requestingDriverIds.size > 0 || this.rideAccepted) return;
+
     const passengerId = this.authService.getUserId();
     const pName = this.authService.getUserName();
     const pin = this.authService.getUserPin();
@@ -541,9 +707,9 @@ export class PassengerDashboard implements AfterViewInit, AfterViewChecked, OnDe
 
   public logout(): void {
     if (this.rideAccepted) return;
-    const passengerId = this.authService.getUserId();
-    if (passengerId && this.signalRService.state === signalR.HubConnectionState.Connected)
-      this.signalRService.invoke('PassengerLeft', passengerId).catch(() => { });
+    const pid = this.authService.getUserId();
+    if (pid && this.signalRService.state === signalR.HubConnectionState.Connected)
+      this.signalRService.invoke('PassengerLeft', pid).catch(() => {});
     this.authService.logout();
     this.router.navigate(['/login']);
   }
@@ -559,15 +725,12 @@ export class PassengerDashboard implements AfterViewInit, AfterViewChecked, OnDe
     this.historyLoading = true;
     this.rideHistory = [];
     this.cdr.detectChanges();
-
     const token = localStorage.getItem('token');
     this.http
-      .get<any[]>(API.rides.passenger, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      .get<any[]>(API.rides.passenger, { headers: { Authorization: `Bearer ${token}` } })
       .subscribe({
-        next: (data) => {
-          this.rideHistory = data;
+        next: (d) => {
+          this.rideHistory = d;
           this.historyLoading = false;
           this.cdr.detectChanges();
         },

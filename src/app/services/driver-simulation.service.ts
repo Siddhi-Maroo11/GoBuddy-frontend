@@ -6,31 +6,30 @@ export interface SimulationStep {
   lng: number;
 }
 
+const ARRIVAL_THRESHOLD_KM = 0.05; 
+
 @Injectable({ providedIn: 'root' })
 export class DriverSimulationService {
   private interval: any = null;
-
-  public isRunning: boolean = false;
+  public isRunning = false;
   public step$ = new Subject<SimulationStep>();
-
-  public start(
-    coords: [number, number][],
-    durationMs: number,
-    onComplete: () => void,
-  ): void {
+  public start(coords: [number, number][], durationMs: number, onComplete: () => void): void {
     this.stop();
-    if (coords.length < 2) { onComplete(); return; }
+    if (coords.length < 2) {
+      onComplete();
+      return;
+    }
 
     const totalSteps = coords.length;
-    const intervalMs = durationMs / totalSteps;
+    const intervalMs = Math.max(100, durationMs / totalSteps);
     let step = 0;
     this.isRunning = true;
 
     this.interval = setInterval(() => {
       if (step >= totalSteps) {
         this.stop();
-        const last = coords[totalSteps - 1];
-        this.step$.next({ lat: last[1], lng: last[0] });
+        const [lng, lat] = coords[totalSteps - 1];
+        this.step$.next({ lat, lng });
         onComplete();
         return;
       }
@@ -41,7 +40,16 @@ export class DriverSimulationService {
   }
 
   public stop(): void {
-    if (this.interval) { clearInterval(this.interval); this.interval = null; }
+    if (this.interval) {
+      clearInterval(this.interval);
+      this.interval = null;
+    }
     this.isRunning = false;
+  }
+
+  private distKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+    const dx = lat2 - lat1;
+    const dy = (lng2 - lng1) * Math.cos((lat1 * Math.PI) / 180);
+    return Math.sqrt(dx * dx + dy * dy) * 111;
   }
 }

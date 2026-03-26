@@ -1040,3 +1040,95 @@ $green: #22c55e;
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }
+
+.pooled-passengers {
+  border-top: 1px solid $border;
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pooled-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.pooled-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: $muted;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.pooled-count {
+  background: $purple;
+  color: $white;
+  font-size: 10px;
+  font-weight: 700;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pooled-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  background: #f9fafb;
+  border: 1px solid $border;
+  border-radius: 8px;
+}
+
+.pooled-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pooled-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: $text;
+}
+
+.pooled-pickup {
+  font-size: 11px;
+  color: $muted;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 160px;
+}
+
+.pooled-status {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 10px;
+  flex-shrink: 0;
+
+  &.verified {
+    background: #dcfce7;
+    color: #16a34a;
+  }
+
+  &.pending {
+    background: #fef9c3;
+    color: #92400e;
+  }
+}
+
+.active-ride-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}

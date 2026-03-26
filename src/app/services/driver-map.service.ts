@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import * as L from 'leaflet';
+import * as Leaflet from 'leaflet';
 import { Subject } from 'rxjs';
 import { API } from '../constants/api.constants';
 import { createPickupIcon } from '../utils/map.utils';
@@ -9,23 +9,31 @@ export interface MapClickEvent {
   lng: number;
 }
 
+export interface OsrmRouteResult {
+  coords: [number, number][];
+  distanceKm: number;
+  durationMin: number;
+  eta: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class DriverMapService {
-  private map!: L.Map;
-  private driverMarker!: L.Marker;
+  private map!: Leaflet.Map;
+  private driverMarker!: Leaflet.Marker;
   private routeCoords: [number, number][] = [];
-  private routeLayer: L.Polyline | null = null;
-  private pickupMarker: L.Marker | null = null;
+  private routeLayer: Leaflet.Polyline | null = null;
+  private pickupMarker: Leaflet.Marker | null = null;
+  private etaLabel: Leaflet.Marker | null = null;
 
   public mapClick$ = new Subject<MapClickEvent>();
 
   public initMap(elementId: string, center: [number, number], zoom: number): void {
-    this.map = L.map(elementId, { zoomControl: false }).setView(center, zoom);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    this.map = Leaflet.map(elementId, { zoomControl: false }).setView(center, zoom);
+    Leaflet.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors',
     }).addTo(this.map);
-    L.control.zoom({ position: 'bottomright' }).addTo(this.map);
-    this.map.on('click', (e: L.LeafletMouseEvent) => {
+    Leaflet.control.zoom({ position: 'bottomright' }).addTo(this.map);
+    this.map.on('click', (e: Leaflet.LeafletMouseEvent) => {
       this.mapClick$.next({ lat: e.latlng.lat, lng: e.latlng.lng });
     });
     setTimeout(() => this.map.invalidateSize(), 0);
@@ -33,7 +41,7 @@ export class DriverMapService {
 
   public placeDriverMarker(lat: number, lng: number): void {
     if (this.driverMarker) this.map.removeLayer(this.driverMarker);
-    const icon = L.divIcon({
+    const icon = Leaflet.divIcon({
       className: '',
       html: `<div style="position:relative;width:40px;height:40px;">
         <div style="position:absolute;inset:0;border-radius:50%;background:rgba(124,58,237,0.15);"></div>
@@ -50,7 +58,7 @@ export class DriverMapService {
       iconSize: [40, 40],
       iconAnchor: [20, 20],
     });
-    this.driverMarker = L.marker([lat, lng], { icon }).addTo(this.map);
+    this.driverMarker = Leaflet.marker([lat, lng], { icon }).addTo(this.map);
   }
 
   public removeDriverMarker(): void {
@@ -78,19 +86,23 @@ export class DriverMapService {
     pickupLabel?: string,
     pickupLat?: number,
     pickupLng?: number,
-  ): Promise<{ coords: [number, number][]; distanceKm: number }> {
+  ): Promise<OsrmRouteResult> {
     this.clearRoute();
 
     const res = await fetch(API.osrm.route(fromLng, fromLat, toLng, toLat));
     const data = await res.json();
-    if (!data.routes?.length) return { coords: [], distanceKm: 0 };
 
-    const rawCoords: [number, number][] = data.routes[0].geometry.coordinates;
-    const distanceKm = Math.round((data.routes[0].distance / 1000) * 100) / 100;
+    if (!data.routes?.length) return { coords: [], distanceKm: 0, durationMin: 0, eta: '' };
+
+    const route = data.routes[0];
+    const rawCoords: [number, number][] = route.geometry.coordinates;
+    const distanceKm = Math.round((route.distance / 1000) * 100) / 100;
+    const durationMin = Math.ceil(route.duration / 60);
+    const eta = this.formatDuration(route.duration);
 
     this.routeCoords = rawCoords.map(([lng, lat]) => [lat, lng] as [number, number]);
 
-    this.routeLayer = L.polyline(this.routeCoords, {
+    this.routeLayer = Leaflet.polyline(this.routeCoords, {
       color,
       weight: 5,
       opacity: 0.9,
@@ -99,7 +111,7 @@ export class DriverMapService {
 
     if (pickupLabel && pickupLat !== undefined && pickupLng !== undefined) {
       if (this.pickupMarker) this.map.removeLayer(this.pickupMarker);
-      this.pickupMarker = L.marker([pickupLat, pickupLng], { icon: createPickupIcon() })
+      this.pickupMarker = Leaflet.marker([pickupLat, pickupLng], { icon: createPickupIcon() })
         .addTo(this.map)
         .bindPopup(pickupLabel);
     }
@@ -110,30 +122,23 @@ export class DriverMapService {
         this.map.fitBounds(this.routeLayer.getBounds(), { padding: [60, 60], maxZoom: 15 });
     }, 100);
 
-    return { coords: rawCoords, distanceKm };
+    return { coords: rawCoords, distanceKm, durationMin, eta };
   }
-
   public trimRoute(driverLat: number, driverLng: number): void {
     if (!this.routeLayer || this.routeCoords.length < 2) return;
-
-    let closestIndex = 0;
-    let minDist = Infinity;
-
-    this.routeCoords.forEach(([lat, lng], i) => {
+    
+    let closestIndex = 0, minDist = Infinity;
+    const searchLimit = Math.min(50, this.routeCoords.length);
+    
+    for(let i = 0; i < searchLimit; i++) {
+      const [lat, lng] = this.routeCoords[i];
       const d = Math.hypot(lat - driverLat, lng - driverLng);
-      if (d < minDist) {
-        minDist = d;
-        closestIndex = i;
-      }
-    });
-
-    this.routeCoords = this.routeCoords.slice(closestIndex);
-
-    if (this.routeCoords.length < 2) {
-      this.clearRoute();
-      return;
+      if (d < minDist) { minDist = d; closestIndex = i; }
     }
-
+    
+    this.routeCoords = this.routeCoords.slice(closestIndex);
+    if (this.routeCoords.length < 2) { this.clearRoute(); return; }
+    
     this.routeLayer.setLatLngs(this.routeCoords);
   }
 
@@ -146,6 +151,62 @@ export class DriverMapService {
       this.map.removeLayer(this.pickupMarker);
       this.pickupMarker = null;
     }
+    if (this.etaLabel) {
+      this.map.removeLayer(this.etaLabel);
+      this.etaLabel = null;
+    }
     this.routeCoords = [];
+  }
+
+  public formatDuration(seconds: number): string {
+    const m = Math.ceil(seconds / 60);
+    if (m < 60) return `${m} min`;
+    const h = Math.floor(m / 60);
+    const rem = m % 60;
+    return rem > 0 ? `${h}h ${rem}m` : `${h}h`;
+  }
+  private getMultiWaypointOsrmUrl(waypoints: [number, number][]): string {
+    const coordsStr = waypoints.map((wp) => `${wp[0]},${wp[1]}`).join(';');
+    return `https://router.project-osrm.org/route/v1/driving/${coordsStr}?overview=full&geometries=geojson`;
+  }
+  public async drawMultiWaypointRoute(
+    waypoints: { lat: number, lng: number }[], 
+    color: string = '#4285F4'
+  ): Promise<OsrmRouteResult | null> {
+    this.clearRoute();
+    if (waypoints.length < 2) return null;
+    const osrmWaypoints: [number, number][] = waypoints.map(wp => [wp.lng, wp.lat]);
+    
+    try {
+      const res = await fetch(this.getMultiWaypointOsrmUrl(osrmWaypoints));
+      const data = await res.json();
+
+      if (!data.routes?.length) return null;
+
+      const route = data.routes[0];
+      const rawCoords: [number, number][] = route.geometry.coordinates;
+      const distanceKm = Math.round((route.distance / 1000) * 100) / 100;
+      const durationMin = Math.ceil(route.duration / 60);
+      const eta = this.formatDuration(route.duration);
+      this.routeCoords = rawCoords.map(([lng, lat]) => [lat, lng] as [number, number]);
+
+      this.routeLayer = Leaflet.polyline(this.routeCoords, {
+        color,
+        weight: 5,
+        opacity: 0.9,
+        lineCap: 'round',
+      }).addTo(this.map);
+
+      setTimeout(() => {
+        this.map.invalidateSize();
+        if (this.routeLayer)
+          this.map.fitBounds(this.routeLayer.getBounds(), { padding: [60, 60], maxZoom: 15 });
+      }, 100);
+
+      return { coords: rawCoords, distanceKm, durationMin, eta };
+    } catch (err) {
+      console.error('Multi-waypoint routing error:', err);
+      return null;
+    }
   }
 }

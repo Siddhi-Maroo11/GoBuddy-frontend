@@ -2,7 +2,7 @@
   <nav class="navbar">
     <div class="brand">
       <span class="brand-dot"></span>
-      GoBuddy
+      GoBuddy <span class="brand-role">Driver</span>
     </div>
 
     @if (!isOnline) {
@@ -32,7 +32,6 @@
         <div class="profile-avatar">{{ driverName.charAt(0).toUpperCase() }}</div>
         <span class="profile-name">{{ driverName }}</span>
       </div>
-
       <div class="toggle-wrap">
         <span class="toggle-label">{{ isOnline ? 'Online' : 'Offline' }}</span>
         <button
@@ -44,8 +43,7 @@
           <span class="toggle-thumb"></span>
         </button>
       </div>
-
-      <button class="logout-btn" [disabled]="!!confirmedRide" (click)="logout()">Logout</button>
+      <button class="logout-btn" [disabled]="hasConfirmedRides" (click)="logout()">Logout</button>
     </div>
   </nav>
 
@@ -65,16 +63,16 @@
       </div>
       <div class="notif-body">
         <div class="notif-row">
-          <span class="notif-label">Passenger name :</span>
-          <span class="notif-value">{{ incomingRequest.passengerName }}</span>
+          <span class="notif-label">Passenger</span
+          ><span class="notif-value">{{ incomingRequest.passengerName }}</span>
         </div>
         <div class="notif-row">
-          <span class="notif-label">Pickup from :</span>
-          <span class="notif-value">{{ incomingRequest.pickupName }}</span>
+          <span class="notif-label">Pickup</span
+          ><span class="notif-value">{{ incomingRequest.pickupName }}</span>
         </div>
         <div class="notif-row">
-          <span class="notif-label">Drop to :</span>
-          <span class="notif-value">{{ incomingRequest.dropName }}</span>
+          <span class="notif-label">Drop</span
+          ><span class="notif-value">{{ incomingRequest.dropName }}</span>
         </div>
       </div>
       <div class="notif-actions">
@@ -84,128 +82,181 @@
     </div>
   }
 
-  @if (confirmedRide && !incomingRequest) {
+  @if (hasConfirmedRides && !incomingRequest) {
     <div class="confirmed-card">
-      <div class="confirmed-header">
-        <span class="confirmed-title">
-          @if (arrivedAtDrop) {
-            Ride Ended
-          } @else if (pinConfirmed) {
-            Ride In Progress
-          } @else {
-            Ride Confirmed
-          }
-        </span>
-        <span
-          class="confirmed-badge"
-          [class.in-progress]="pinConfirmed && !arrivedAtDrop"
-          [class.ended]="arrivedAtDrop"
-        >
-          @if (arrivedAtDrop) {
-            At Destination
-          } @else if (pinConfirmed) {
-            PIN Verified
-          } @else {
-            Waiting to verify PIN
-          }
-        </span>
-      </div>
-
-      <div class="confirmed-body">
-        <div class="confirmed-row">
-          <span class="confirmed-label">Passenger name :</span>
-          <span class="confirmed-value">{{ confirmedRide.passengerName }}</span>
-        </div>
-        <div class="confirmed-row">
-          <span class="confirmed-label">Pickup from :</span>
-          <span class="confirmed-value">{{ confirmedRide.pickupName }}</span>
-        </div>
-        <div class="confirmed-row">
-          <span class="confirmed-label">Drop to :</span>
-          <span class="confirmed-value">{{ confirmedRide.dropName }}</span>
-        </div>
-      </div>
-
-      @if (!arrivedAtPickup && !pinConfirmed && !arrivedAtDrop) {
-        <button
-          class="sim-btn"
-          [class.running]="simulationRunning"
-          [disabled]="simulationRunning"
-          (click)="toggleSimulation()"
-        >
-          {{ simulationRunning ? 'Ride In Progress...' : 'Start Ride' }}
-        </button>
-      }
-
-      @if (arrivedAtPickup && !pinConfirmed) {
-        <div class="arrived-notice">You have arrived at pickup</div>
-        <div class="pin-section">
-          <input
-            type="text"
-            class="pin-input"
-            placeholder="Verify PIN"
-            maxlength="4"
-            [(ngModel)]="enteredPin"
-            (keyup.enter)="submitPin()"
-          />
-          <button class="pin-submit-btn" (click)="submitPin()">Confirm</button>
-        </div>
-        @if (pinError) {
-          <div class="pin-error">{{ pinError }}</div>
-        }
-      }
-
-      @if (pinConfirmed && !arrivedAtDrop) {
-        <button
-          class="sim-btn"
-          [class.running]="simulationRunning"
-          [disabled]="simulationRunning"
-          (click)="toggleSimulation()"
-        >
-          {{ simulationRunning ? 'Moving to Drop Location...' : 'Start Ride' }}
-        </button>
-      }
-
-      @if (arrivedAtDrop) {
-        <div class="arrived-notice drop">Reached destination</div>
-        @if (ridePaymentData) {
-          <div class="payment-summary">
-            <div class="payment-row">
-              <span>Passenger</span>
-              <span>{{ ridePaymentData.passengerName }}</span>
-            </div>
-            <div class="payment-row">
-              <span>Distance</span>
-              <span>{{ ridePaymentData.totalKm }} km</span>
-            </div>
-            <div class="payment-row">
-              <span>Rate</span>
-              <span>₹{{ ridePaymentData.ratePerKm }}/km</span>
-            </div>
-            <div class="payment-row total">
-              <span>Total</span>
-              <span>₹{{ ridePaymentData.totalCost }}</span>
-            </div>
+      @if (activeRide) {
+        <div class="active-ride-section">
+          <div class="confirmed-header">
+            <span class="confirmed-title">
+              @if (activeRide.arrivedAtDrop) {
+                Reached Destination
+              } @else if (carpoolPhase === 'drops') {
+                Dropping Passengers
+              } @else if (activeRide.arrivedAtPickup) {
+                Arrived at Pickup
+              } @else {
+                Going to Pickup
+              }
+            </span>
+            <span
+              class="confirmed-badge"
+              [class.in-progress]="activeRide.pinConfirmed || carpoolPhase === 'drops'"
+              [class.ended]="activeRide.arrivedAtDrop"
+            >
+              @if (activeRide.arrivedAtDrop) {
+                At Destination
+              } @else if (carpoolPhase === 'drops') {
+                All Boarded
+              } @else if (activeRide.pinConfirmed) {
+                PIN Verified
+              } @else {
+                Awaiting PIN
+              }
+            </span>
           </div>
-        }
-        <button class="end-ride-btn" (click)="endRide()">End Ride</button>
+
+          <div class="confirmed-body">
+            <div class="confirmed-row">
+              <span class="confirmed-label">Passenger</span>
+              <span class="confirmed-value">{{ activeRide.passengerName }}</span>
+            </div>
+            @if (carpoolPhase === 'pickups' && !activeRide.arrivedAtDrop) {
+              <div class="confirmed-row">
+                <span class="confirmed-label">Pickup</span>
+                <span class="confirmed-value">{{ activeRide.pickupName }}</span>
+              </div>
+            }
+            <div class="confirmed-row">
+              <span class="confirmed-label">Drop</span>
+              <span class="confirmed-value">{{ activeRide.dropName }}</span>
+            </div>
+            <!-- @if (activeRide.routeEta) {
+              <div class="confirmed-row">
+                <span class="confirmed-label">ETA</span>
+                <span class="confirmed-value eta-value">{{ activeRide.routeEta }}</span>
+              </div>
+            } -->
+          </div>
+
+          @if (
+            carpoolPhase === 'pickups' && !activeRide.arrivedAtPickup && !activeRide.arrivedAtDrop
+          ) {
+            <button
+              class="sim-btn"
+              [class.running]="simulationRunning"
+              [disabled]="simulationRunning"
+              (click)="toggleSimulation()"
+            >
+              {{ simulationRunning ? 'Going to Pickup...' : 'Start Ride' }}
+            </button>
+          }
+
+          @if (
+            carpoolPhase === 'pickups' && activeRide.arrivedAtPickup && !activeRide.pinConfirmed
+          ) {
+            <div class="arrived-notice">Arrived at pickup</div>
+            <div class="pin-section">
+              <input
+                type="text"
+                class="pin-input"
+                placeholder="Enter PIN"
+                maxlength="4"
+                [(ngModel)]="activeRide.enteredPin"
+                (keyup.enter)="submitPin(activeRide.rideId, activeRide.enteredPin)"
+              />
+              <button
+                class="pin-submit-btn"
+                (click)="submitPin(activeRide.rideId, activeRide.enteredPin)"
+              >
+                Confirm
+              </button>
+            </div>
+            @if (activeRide.pinError) {
+              <div class="pin-error">{{ activeRide.pinError }}</div>
+            }
+          }
+
+          @if (carpoolPhase === 'drops' && !activeRide.arrivedAtDrop) {
+            <button
+              class="sim-btn drop-phase"
+              [class.running]="simulationRunning"
+              [disabled]="simulationRunning"
+              (click)="toggleSimulation()"
+            >
+              {{ simulationRunning ? 'Moving to Drop...' : 'Start Drop' }}
+            </button>
+          }
+
+          @if (activeRide.arrivedAtDrop) {
+            <div class="arrived-notice drop">Reached destination</div>
+            @if (activeRide.paymentData) {
+              <div class="payment-summary">
+                <div class="payment-row">
+                  <span>Passenger</span><span>{{ activeRide.passengerName }}</span>
+                </div>
+                <div class="payment-row">
+                  <span>Distance</span><span>{{ activeRide.paymentData.totalKm }} km</span>
+                </div>
+                <div class="payment-row">
+                  <span>Rate</span><span>₹{{ activeRide.paymentData.ratePerKm }}/km</span>
+                </div>
+                <div class="payment-row total">
+                  <span>Total</span><span>₹{{ activeRide.paymentData.totalCost }}</span>
+                </div>
+              </div>
+            }
+            <button class="end-ride-btn" (click)="endRide()">Confirm Drop</button>
+          }
+
+          @if (activeRide.cancelError) {
+            <div class="cancel-error">{{ activeRide.cancelError }}</div>
+          }
+
+          @if (!activeRide.pinConfirmed && !activeRide.arrivedAtDrop) {
+            <button class="cancel-ride-btn" (click)="cancelRide(activeRide.rideId)">
+              Cancel Ride
+            </button>
+          }
+        </div>
       }
 
-      @if (cancelError) {
-        <div class="cancel-error">{{ cancelError }}</div>
-      }
-
-      @if (!pinConfirmed && !arrivedAtDrop) {
-        <button class="cancel-ride-btn" (click)="cancelRide()">Cancel Ride</button>
+      @if (pooledRides.length > 0) {
+        <div class="pooled-passengers">
+          <div class="pooled-header">
+            <span class="pooled-title">{{
+              carpoolPhase === 'drops' ? 'Going Together' : 'Pooled Passengers'
+            }}</span>
+            <span class="pooled-count">{{ confirmedRides.length }}</span>
+          </div>
+          @for (ride of pooledRides; track ride.rideId) {
+            <div class="pooled-card">
+              <div class="pooled-info">
+                <span class="pooled-name">{{ ride.passengerName }}</span>
+                @if (!ride.pinConfirmed) {
+                  <span class="pooled-pickup">↑ {{ ride.pickupName }}</span>
+                } @else {
+                  <span class="pooled-pickup">↓ {{ ride.dropName }}</span>
+                }
+              </div>
+              <span
+                class="pooled-status"
+                [class.verified]="ride.pinConfirmed"
+                [class.pending]="!ride.pinConfirmed"
+              >
+                {{ ride.pinConfirmed ? 'Boarded' : 'Waiting' }}
+              </span>
+            </div>
+          }
+        </div>
       }
     </div>
   }
 
   <div class="bottom-panel">
     <div class="panel-info">
-      <span class="panel-label">
-        {{ isOnline ? 'You are accepting rides' : 'Go online to accept rides' }}
-      </span>
+      <span class="panel-label">{{
+        isOnline ? 'You are accepting rides' : 'Go online to accept rides'
+      }}</span>
     </div>
   </div>
 
@@ -216,16 +267,13 @@
           <span class="history-title">Ride History</span>
           <button class="history-close" (click)="closeHistory()">×</button>
         </div>
-
         @if (historyLoading) {
           <div class="history-loading">
             <div class="spinner"></div>
             <span>Loading...</span>
           </div>
         } @else if (rideHistory.length === 0) {
-          <div class="history-empty">
-            <span>No rides completed yet.</span>
-          </div>
+          <div class="history-empty"><span>No rides completed yet.</span></div>
         } @else {
           <div class="history-list">
             @for (session of rideHistory; track session.sessionId) {
@@ -241,13 +289,13 @@
                     <div class="history-card">
                       <div class="history-route">
                         <div class="route-point">
-                          <span class="route-dot green"></span>
-                          <span class="route-name">{{ p.pickupName }}</span>
+                          <span class="route-dot green"></span
+                          ><span class="route-name">{{ p.pickupName }}</span>
                         </div>
                         <div class="route-line"></div>
                         <div class="route-point">
-                          <span class="route-dot red"></span>
-                          <span class="route-name">{{ p.dropName }}</span>
+                          <span class="route-dot red"></span
+                          ><span class="route-name">{{ p.dropName }}</span>
                         </div>
                       </div>
                       <div class="history-stats">

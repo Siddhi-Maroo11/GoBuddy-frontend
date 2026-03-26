@@ -160,54 +160,7 @@ export class Signup implements AfterViewInit {
     });
   }
 
-//   onSubmit() {
-//     if (!this.phoneInstance || !this.phoneInstance.isValidNumber()) {
-//       this.signupForm.get('mobile')?.setErrors({ invalid: true });
-//       this.signupForm.markAllAsTouched();
-//       return;
-//     }
-
-//     this.trimFormValues();
-
-//     if (this.signupForm.invalid) {
-//       this.signupForm.markAllAsTouched();
-//       return;
-//     }
-
-//     const formValue = this.signupForm.value;
-//     const dobIso = new Date(formValue.dob).toISOString();
-//     const formattedMobile = this.phoneInstance.getNumber();
-
-//     const payload: any = {
-//       Name: formValue.fullName,
-//       Phone: formattedMobile,
-//       Email: formValue.email,
-//       Password: formValue.password,
-//       Dob: dobIso,
-//       Role: formValue.isDriver ? 'Driver' : 'Passenger',
-//     };
-
-//     if (formValue.isDriver) {
-//       payload.VehicleModel = formValue.vehicleModel;
-//       payload.TotalSeats = formValue.totalSeats;
-//       payload.VehicleNumber = formValue.vehicleNumber;
-//       payload.LicenseNumber = formValue.licenseNumber;
-//       payload.RatePerKm = formValue.ratePerKm;
-//     }
-
-//     this.authService.signup(payload).subscribe({
-//       next: () => {
-//         alert(`${payload.Role} Signup Successful`);
-//         this.signupForm.reset();
-//         localStorage.removeItem('token');
-//         this.router.navigate(['/login']);
-//       },
-//       error: (err) => console.error(err),
-//     });
-//   }
-// }
-
-onSubmit() {
+  onSubmit() {
     if (!this.phoneInstance || !this.phoneInstance.isValidNumber()) {
       this.signupForm.get('mobile')?.setErrors({ invalid: true });
       this.signupForm.markAllAsTouched();
@@ -222,36 +175,29 @@ onSubmit() {
     }
 
     const formValue = this.signupForm.value;
-    const formData = new FormData();
+    const dobIso = new Date(formValue.dob).toISOString();
+    const formattedMobile = this.phoneInstance.getNumber();
 
-    formData.append('Name', formValue.fullName);
-    formData.append('Phone', this.phoneInstance.getNumber());
-    formData.append('Email', formValue.email);
-    formData.append('Password', formValue.password);
-    formData.append('Dob', new Date(formValue.dob).toISOString());
-    formData.append('Role', formValue.isDriver ? 'Driver' : 'Passenger');
+    const payload: any = {
+      Name: formValue.fullName,
+      Phone: formattedMobile,
+      Email: formValue.email,
+      Password: formValue.password,
+      Dob: dobIso,
+      Role: formValue.isDriver ? 'Driver' : 'Passenger',
+    };
 
     if (formValue.isDriver) {
-      formData.append('VehicleModel', formValue.vehicleModel);
-      formData.append('TotalSeats', formValue.totalSeats);
-      formData.append('VehicleNumber', formValue.vehicleNumber);
-      formData.append('LicenseNumber', formValue.licenseNumber);
-      formData.append('RatePerKm', formValue.ratePerKm);
-
-      const licenseFiles = this.signupForm.get('licenseImage')?.value;
-      if (licenseFiles && licenseFiles.length > 0) {
-        formData.append('LicenseImg', licenseFiles[0]);
-      }
-
-      const vehicleFiles = this.signupForm.get('vehicleImages')?.value;
-      if (vehicleFiles && vehicleFiles.length > 0) {
-        formData.append('VehicleImg', vehicleFiles[0]);
-      }
+      payload.VehicleModel = formValue.vehicleModel;
+      payload.TotalSeats = formValue.totalSeats;
+      payload.VehicleNumber = formValue.vehicleNumber;
+      payload.LicenseNumber = formValue.licenseNumber;
+      payload.RatePerKm = formValue.ratePerKm;
     }
 
-    this.authService.signup(formData).subscribe({
+    this.authService.signup(payload).subscribe({
       next: () => {
-        alert(`${formValue.isDriver ? 'Driver' : 'Passenger'} Signup Successful`);
+        alert(`${payload.Role} Signup Successful`);
         this.signupForm.reset();
         localStorage.removeItem('token');
         this.router.navigate(['/login']);
@@ -259,5 +205,4 @@ onSubmit() {
       error: (err) => console.error(err),
     });
   }
-
 }
