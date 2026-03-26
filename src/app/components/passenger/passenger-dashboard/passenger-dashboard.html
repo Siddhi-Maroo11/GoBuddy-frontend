@@ -1,1 +1,200 @@
-<p>passenger-dashboard works!</p>
+<div class="dashboard">
+  <nav class="navbar">
+    <div class="brand"><span class="brand-dot"></span>GoBuddy</div>
+    <div class="nav-search">
+      <div class="search-field" [class.active]="activeInput === 'pickup'" [class.disabled]="rideAccepted || rideCompleted">
+        <span class="field-dot green"></span>
+        <input type="text" placeholder="Pickup location" [(ngModel)]="pickupQuery" (focus)="setActiveInput('pickup')" (input)="onPickupInput()" class="search-input" [disabled]="rideAccepted || rideCompleted" />
+        <button class="gps-btn" (click)="useCurrentLocation()" [disabled]="rideAccepted || rideCompleted">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+          </svg>
+        </button>
+        @if (pickupSuggestions.length > 0 && !rideAccepted) {
+          <div class="suggestions">
+            @for (suggestion of pickupSuggestions; track suggestion.lon) {
+              <div class="suggestion-item" (click)="selectPickup(suggestion)">{{ suggestion.display_name | slice:0:55 }}...</div>
+            }
+          </div>
+        }
+      </div>
+      <div class="field-sep"></div>
+      <div class="search-field" [class.active]="activeInput === 'drop'" [class.disabled]="rideAccepted || rideCompleted">
+        <span class="field-dot red"></span>
+        <input type="text" placeholder="Drop location" [(ngModel)]="dropQuery" (focus)="setActiveInput('drop')" (input)="onDropInput()" class="search-input" [disabled]="rideAccepted || rideCompleted" />
+        @if (dropSuggestions.length > 0 && !rideAccepted) {
+          <div class="suggestions">
+            @for (suggestion of dropSuggestions; track suggestion.lon) {
+              <div class="suggestion-item" (click)="selectDrop(suggestion)">{{ suggestion.display_name | slice:0:55 }}...</div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+    <div class="nav-right">
+      <div class="profile-chip" (click)="openHistory()">
+        <div class="profile-avatar">{{ passengerName.charAt(0).toUpperCase() }}</div>
+        <span class="profile-name">{{ passengerName }}</span>
+      </div>
+      <button class="logout-btn" [disabled]="!canLogout" (click)="logout()">Logout</button>
+    </div>
+  </nav>
+
+  <div class="content">
+    <div id="passenger-map" class="map"></div>
+    @if (selectedPickup && selectedDrop) {
+      <div class="sidebar">
+        @if (rideCompleted) {
+          <div class="ride-completed-card">
+            <div class="completed-icon">✓</div>
+            <h3>You have arrived!</h3>
+            <p>Thank you for riding with GoBuddy</p>
+            @if (paymentData) {
+              <div class="payment-summary">
+                <div class="payment-row"><span>Driver</span><span>{{ paymentData.driverName }}</span></div>
+                <div class="payment-row"><span>Distance</span><span>{{ paymentData.totalKm }} km</span></div>
+                <div class="payment-row"><span>Rate</span><span>₹{{ paymentData.ratePerKm }}/km</span></div>
+                <div class="payment-row total"><span>Total</span><span>₹{{ paymentData.totalCost }}</span></div>
+              </div>
+            }
+            <button class="new-ride-btn" (click)="resetForNewRide()">Book New Ride</button>
+          </div>
+        } @else if (pinConfirmed) {
+          <div class="sidebar-header">
+            <span class="sidebar-title">Ride In Progress</span>
+            <span class="status-badge in-progress">En Route</span>
+          </div>
+          <div class="info-block">
+            <div class="info-row"><span class="info-label">Driver</span><span class="info-value">{{ acceptedDriver?.driverName }}</span></div>
+            <div class="info-row"><span class="info-label">Vehicle</span><span class="info-value">{{ acceptedDriver?.vehicleModel }}</span></div>
+            <div class="info-row"><span class="info-label">Drop</span><span class="info-value">{{ selectedDrop.name }}</span></div>
+            <div class="info-row"><span class="info-label">Distance</span><span class="info-value">{{ pickupToDropRouteKm }} km</span></div>
+            <div class="info-row">
+              <span class="info-label">Est. fare</span>
+              <span class="info-value fare-highlight">₹{{ pickupToDropRouteKm * (acceptedDriver?.ratePerKm ?? 0) | number:'1.0-0' }}</span>
+            </div>
+            @if (nextDropInfo) {
+              <div class="info-row"><span class="info-label">Stops</span><span class="info-value">{{ nextDropInfo }}</span></div>
+            }
+          </div>
+          @if (newPassengerJoinedMsg) {
+            <div class="new-passenger-banner">
+              <span>{{ newPassengerJoinedMsg }}</span>
+            </div>
+          }
+          <div class="pin-confirmed-banner">
+            <span>✓ PIN verified — heading to your destination</span>
+          </div>
+        } @else if (rideAccepted && acceptedDriver) {
+          <div class="sidebar-header">
+            <span class="sidebar-title">{{ driverArrived ? 'Driver Arrived' : 'Driver On The Way' }}</span>
+            <span class="status-badge" [class.arrived]="driverArrived">{{ driverArrived ? 'Arrived' : 'En Route' }}</span>
+          </div>
+          <div class="info-block">
+            <div class="info-row"><span class="info-label">Driver</span><span class="info-value">{{ acceptedDriver.driverName }}</span></div>
+            <div class="info-row"><span class="info-label">Vehicle</span><span class="info-value">{{ acceptedDriver.vehicleModel }}</span></div>
+            <div class="info-row"><span class="info-label">Vehicle No</span><span class="info-value">{{ acceptedDriver.vehicleNo }}</span></div>
+            <div class="info-row"><span class="info-label">Phone</span><span class="info-value">{{ acceptedDriver.phone }}</span></div>
+            <div class="info-row"><span class="info-label">Pickup</span><span class="info-value">{{ selectedPickup.name }}</span></div>
+            <div class="info-row"><span class="info-label">Drop</span><span class="info-value">{{ selectedDrop.name }}</span></div>
+          </div>
+          @if (driverPickingUpOtherMsg && !driverArrived) {
+            <div class="picking-up-other-banner">
+              <span>{{ driverPickingUpOtherMsg }}</span>
+            </div>
+          }
+          @if (driverArrived) {
+            <div class="arrived-banner">
+              <span>Driver has arrived at your pickup!</span>
+            </div>
+          }
+          <div class="pin-block">
+            <p class="pin-label">Boarding PIN</p>
+            <div class="pin-digits">
+              @for (digit of passengerPin?.split(''); track $index) {
+                <span class="pin-digit">{{ digit }}</span>
+              }
+            </div>
+          </div>
+          @if (cancelError) { <div class="msg-box error">{{ cancelError }}</div> }
+          <div class="cancel-wrap">
+            <button class="cancel-ride-btn" (click)="cancelRide()">Cancel Ride</button>
+          </div>
+        } @else {
+          <div class="sidebar-header">
+            <span class="sidebar-title">Nearby Drivers</span>
+            @if (!isSearching && nearbyDrivers.length > 0) {
+              <span class="driver-count">{{ nearbyDrivers.length }}</span>
+            }
+          </div>
+          @if (isSearching) {
+            <div class="state-box"><div class="spinner"></div><span class="state-sub">Searching for drivers...</span></div>
+          } @else if (nearbyDrivers.length === 0) {
+            <div class="state-box">
+              <p class="state-title">No drivers nearby</p>
+              <span class="state-sub">Updates automatically when a driver comes online.</span>
+            </div>
+          } @else {
+            <div class="drivers-list">
+              @for (driver of nearbyDrivers; track driver.connectionId) {
+                <div class="driver-card" [class.selected]="selectedDriver?.connectionId === driver.connectionId" (click)="selectDriver(driver)">
+                  <div class="driver-info">
+                    <span class="driver-name">{{ driver.driverName }}</span>
+                    <span class="driver-vehicle">{{ driver.vehicleModel }}</span>
+                    <div class="driver-meta">
+                      <span class="driver-dist">{{ driver.distanceKm }} km away</span>
+                      <div class="driver-cost">{{ getExpectedCost(driver) }}</div>
+                      <span class="driver-seats">{{ driver.availableSeats }} seats</span>
+                    </div>
+                  </div>
+                  <button class="request-btn" [disabled]="rideAccepted || requestingDriverIds.size > 0" (click)="sendRideRequest(driver); $event.stopPropagation()">
+                    {{ requestingDriverIds.has(driver.connectionId) ? 'Waiting...' : 'Request' }}
+                  </button>
+                </div>
+              }
+            </div>
+            @if (requestError)  { <div class="msg-box error">{{ requestError }}</div> }
+            @if (rideRejected)  { <div class="msg-box error">Driver declined your request.</div> }
+            @if (rideTimeout)   { <div class="msg-box warn">Driver did not respond. Try another driver.</div> }
+          }
+        }
+      </div>
+    }
+  </div>
+
+  @if (showHistory) {
+    <div class="history-overlay" (click)="closeHistory()">
+      <div class="history-modal" (click)="$event.stopPropagation()">
+        <div class="history-header">
+          <span class="history-title">Ride History</span>
+          <button class="history-close" (click)="closeHistory()">×</button>
+        </div>
+        @if (historyLoading) {
+          <div class="history-loading"><div class="spinner"></div><span>Loading...</span></div>
+        } @else if (rideHistory.length === 0) {
+          <div class="history-empty"><span>No rides completed yet.</span></div>
+        } @else {
+          <div class="history-list">
+            @for (ride of rideHistory; track ride.rideRequestId) {
+              <div class="history-card">
+                <div class="history-top">
+                  <span class="history-driver">{{ ride.driverName }}</span>
+                  <span class="history-date">{{ ride.date | date:'dd MMM yyyy' }}</span>
+                </div>
+                <div class="history-route">
+                  <div class="route-point"><span class="route-dot green"></span><span class="route-name">{{ ride.pickupName }}</span></div>
+                  <div class="route-line"></div>
+                  <div class="route-point"><span class="route-dot red"></span><span class="route-name">{{ ride.dropName }}</span></div>
+                </div>
+                <div class="history-stats">
+                  <span>{{ ride.distanceKm }} km</span>
+                  <span class="history-fare">₹{{ ride.fare }}</span>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>

@@ -1,26 +1,15 @@
 import { CanActivateFn, Router } from '@angular/router';
 import { inject } from '@angular/core';
+import { AuthService } from '../services/auth.service';
 
-export const roleGuard: CanActivateFn = (route, state) => {
+export const roleGuard: CanActivateFn = (route) => {
   const router = inject(Router);
+  const authService = inject(AuthService);
 
-  const token = localStorage.getItem('token');
-
-  if(!token) {
-    router.navigate(['/login']);
-    return false;
-  }
-  
-  const payload = JSON.parse(atob(token.split('.')[1]));
-
-  const userRole = payload.role;
-
-  const expectedRole = route.data['role'];
-
-  if (userRole === expectedRole) {
+  if (authService.getRole() === route.data['role']) {
     return true;
-  } else {
-    router.navigate(['/']);
-    return false;
   }
+
+  router.navigate(['/']);
+  return false;
 };
